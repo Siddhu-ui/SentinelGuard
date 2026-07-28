@@ -1,0 +1,38 @@
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+
+# Backend runtime data
+backend/uploads/
+backend/*.db
+backend/*.sqlite
+backend/*.sqlite3
+*.db
+*.sqlite
+*.sqlite3
+
+# Node / frontend build output
+node_modules/
+frontend/node_modules/
+frontend/dist/
+*.tsbuildinfo
+
+# Coverage, logs, and editor files
+coverage/
+htmlcov/
+*.cover
+*.log
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
