@@ -64,10 +64,12 @@ export default function Encrypt({ token, api }: Props) {
       const a = document.createElement('a');
       a.href = url;
       a.download = result.encrypted_filename;
+      document.body.appendChild(a);
       a.click();
-      URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
     } catch (e: any) {
-      setError(e.message);
+      setError(e.message || 'Download failed. Please try again.');
     }
   };
 

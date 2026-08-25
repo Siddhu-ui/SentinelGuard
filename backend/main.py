@@ -1,7 +1,7 @@
 import json, shutil, uuid
 from datetime import datetime, timezone
 from pathlib import Path
-from fastapi import Depends, FastAPI, File, HTTPException, Request, UploadFile
+from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from sqlalchemy import func, select
@@ -95,7 +95,7 @@ def dashboard(user:User=Depends(current_user),db:Session=Depends(get_db)):
 @app.post("/encrypt")
 async def encrypt(
     file: UploadFile = File(...),
-    password: str = File(...),
+    password: str = Form(...),
     user: User = Depends(current_user),
     db: Session = Depends(get_db),
 ):
@@ -202,7 +202,7 @@ async def encryption_history(
 @app.post("/decrypt")
 async def decrypt(
     file: UploadFile = File(...),
-    password: str = File(...),
+    password: str = Form(...),
     user: User = Depends(current_user),
     db: Session = Depends(get_db),
 ):
