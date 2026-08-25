@@ -38,3 +38,15 @@ class ScanOut(BaseModel):
     details: dict
     threats: list[ThreatOut]
     created_at: datetime
+
+class EncryptionOut(BaseModel):
+    id: int
+    operation: str
+    original_filename: str
+    encrypted_filename: str
+    file_size: int
+    original_sha256: str
+    algorithm: str
+    kdf: str
+    status: str
+    created_at: datetime

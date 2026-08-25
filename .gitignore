@@ -14,6 +14,7 @@ venv/
 
 # Backend runtime data
 backend/uploads/
+backend/protected/
 backend/*.db
 backend/*.sqlite
 backend/*.sqlite3
