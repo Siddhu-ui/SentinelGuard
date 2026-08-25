@@ -11,6 +11,7 @@ class User(Base):
     password_hash: Mapped[str] = mapped_column(String(255))
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     scans: Mapped[list["Scan"]] = relationship(back_populates="user", cascade="all, delete-orphan")
+    encryption_records: Mapped[list["EncryptionRecord"]] = relationship(back_populates="user", cascade="all, delete-orphan")
 
 class Scan(Base):
     __tablename__ = "scans"
@@ -38,3 +39,19 @@ class Threat(Base):
     severity: Mapped[str] = mapped_column(String(20))
     message: Mapped[str] = mapped_column(Text)
     scan: Mapped[Scan] = relationship(back_populates="threats")
+
+class EncryptionRecord(Base):
+    __tablename__ = "encryption_records"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    operation: Mapped[str] = mapped_column(String(12))
+    original_filename: Mapped[str] = mapped_column(String(255))
+    encrypted_filename: Mapped[str] = mapped_column(String(280))
+    stored_name: Mapped[str] = mapped_column(String(64), unique=True)
+    file_size: Mapped[int] = mapped_column(Integer)
+    original_sha256: Mapped[str] = mapped_column(String(64), index=True)
+    algorithm: Mapped[str] = mapped_column(String(40), default="AES-256-GCM")
+    kdf: Mapped[str] = mapped_column(String(40), default="Argon2id")
+    status: Mapped[str] = mapped_column(String(20), default="secure")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+    user: Mapped[User] = relationship(back_populates="encryption_records")
