@@ -30,10 +30,22 @@ export default function Encrypt({ token, api }: Props) {
   // Reset when file changes
   useEffect(() => { setResult(null); setError(''); }, [file]);
 
+  // Validation logic: only show mismatch error if user has entered confirmation password
   const errors: string[] = [];
-  if (password && password.length < 10) errors.push('Password must be at least 10 characters');
-  if (confirm && password !== confirm) errors.push('Passwords do not match');
-  const valid = !!file && password.length >= 10 && password === confirm;
+  if (password && password.length < 10) {
+    errors.push('Password must be at least 10 characters');
+  }
+  if (confirm.length > 0 && password !== confirm) {
+    errors.push('Passwords do not match');
+  }
+
+  // Button enabled only when: file selected + password >= 10 chars + confirmation not empty + both match + not encrypting
+  const valid =
+    !!file &&
+    password.length >= 10 &&
+    confirm.length > 0 &&
+    password === confirm &&
+    !busy;
 
   const handleEncrypt = async () => {
     if (!file || !valid) return;
@@ -45,6 +57,10 @@ export default function Encrypt({ token, api }: Props) {
       form.append('password', password);
       const res = await api('/encrypt', token, { method: 'POST', body: form });
       setResult(res);
+      // Clear password from memory after successful encryption
+      setPassword('');
+      setConfirm('');
+      if (inputRef.current) inputRef.current.value = '';
     } catch (e: any) {
       setError(e.message || 'Encryption failed. Please try again.');
     } finally {
@@ -163,6 +179,7 @@ export default function Encrypt({ token, api }: Props) {
             value={password}
             onChange={e => setPassword(e.target.value)}
             minLength={10}
+            autoComplete="new-password"
           />
           <button type="button" className="pw-toggle" onClick={() => setShowPw(!showPw)}>
             {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -176,6 +193,7 @@ export default function Encrypt({ token, api }: Props) {
             placeholder="Confirm password"
             value={confirm}
             onChange={e => setConfirm(e.target.value)}
+            autoComplete="new-password"
           />
         </div>
 

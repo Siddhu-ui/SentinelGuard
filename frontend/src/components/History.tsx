@@ -3,12 +3,14 @@ import {Search} from 'lucide-react';
 import {Scan} from './App';
 import ScanTable from './ScanTable';
 
-export default function HistoryPage({token,open}:{token:string;open:(s:Scan)=>void}){
+export default function HistoryPage({token,open,onAuthFailure}:{token:string;open:(s:Scan)=>void;onAuthFailure:()=>void}){
   const [scans,setScans]=useState<Scan[]>([]);
   const [q,setQ]=useState('');
 
   const load=async()=>{
-    const r=await fetch((import.meta as any).env?.VITE_API_URL||'http://localhost:8000'+'/scans?q='+encodeURIComponent(q),{headers:{Authorization:`Bearer ${token}`}});
+    const apiUrl=(import.meta as any).env?.VITE_API_URL||'http://localhost:8000';
+    const r=await fetch(apiUrl+'/scans?q='+encodeURIComponent(q),{headers:{Authorization:`Bearer ${token}`}});
+    if(r.status===401){onAuthFailure();return}
     if(r.ok)setScans(await r.json());
   };
   useEffect(()=>{const t=setTimeout(load,200);return()=>clearTimeout(t)},[q]);

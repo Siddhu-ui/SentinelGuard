@@ -9,7 +9,8 @@ export default function Result({scan,token,close}:{scan:Scan;token:string;close:
   const download=async()=>{
     setDownloading(true);
     try{
-      const r=await fetch((import.meta as any).env?.VITE_API_URL||'http://localhost:8000'+`/scans/${scan.id}/report.pdf`,{headers:{Authorization:`Bearer ${token}`}});
+      const apiUrl=(import.meta as any).env?.VITE_API_URL||'http://localhost:8000';
+      const r=await fetch(apiUrl+`/scans/${scan.id}/report.pdf`,{headers:{Authorization:`Bearer ${token}`}});
       const blob=await r.blob();
       const url=URL.createObjectURL(blob);
       const a=document.createElement('a');a.href=url;a.download=`sentinelguard-${scan.id}.pdf`;a.click();

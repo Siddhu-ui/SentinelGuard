@@ -13,7 +13,8 @@ export default function Auth({api,onAuth}:{api:(p:string,t:string,o?:RequestInit
     e.preventDefault();
     setBusy(true);setError('');
     try{
-      const r=await fetch((import.meta as any).env?.VITE_API_URL||'http://localhost:8000'+`/auth/${register?'register':'login'}`,{
+      const apiUrl=(import.meta as any).env?.VITE_API_URL||'http://localhost:8000';
+      const r=await fetch(`${apiUrl}/auth/${register?'register':'login'}`,{
         method:'POST',headers:{'Content-Type':'application/json'},
         body:JSON.stringify(register?{email,display_name:name,password}:{email,password})
       });

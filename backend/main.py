@@ -100,7 +100,7 @@ async def encrypt(
     db: Session = Depends(get_db),
 ):
     """Encrypt an uploaded file using AES-256-GCM. Returns JSON with download URL."""
-    if not password or len(password) < 1:
+    if not password or not password.strip():
         raise HTTPException(400, "Password is required")
     if len(password) > 128:
         raise HTTPException(400, "Password too long")
@@ -207,18 +207,25 @@ async def decrypt(
     db: Session = Depends(get_db),
 ):
     """Decrypt a .sguard file. Returns JSON with download URL for restored file."""
-    if not password:
+    if not password or not password.strip():
         raise HTTPException(400, "Password is required")
 
     filename = Path(file.filename or "upload.sguard").name
+    if not filename.lower().endswith(".sguard"):
+        raise HTTPException(400, "Only .sguard files can be decrypted")
     sguard_data = await file.read()
     if not sguard_data:
         raise HTTPException(400, "File is empty")
+    if len(sguard_data) > settings.max_upload_mb * 1024 * 1024:
+        raise HTTPException(413, "File exceeds maximum upload size")
 
     # Decrypt
     try:
         plaintext, meta = decrypt_file(sguard_data, password)
     except ValueError as e:
+        import logging; logging.getLogger("sentinelguard").warning(
+            "Decryption rejected: %s", type(e).__name__
+        )
         raise HTTPException(400, str(e))
     except Exception as e:
         import logging; logging.getLogger("sentinelguard").error("Decryption failed: %s", type(e).__name__)
@@ -231,7 +238,7 @@ async def decrypt(
     target = protected_dir / decrypted_name
     target.write_bytes(plaintext)
 
-    original_filename = meta["original_filename"]
+    original_filename = Path(meta["original_filename"]).name
 
     return {
         "id": 0,
@@ -254,8 +261,11 @@ async def download_decrypted(
     """Download a decrypted file, preserving original filename."""
     # Sanitize: stored_name must be a plain hex UUID
     import re
-    if not re.match(r'^[a-f0-9]+_decrypted$', stored_name):
+    if not re.fullmatch(r'[a-f0-9]+_decrypted', stored_name):
         raise HTTPException(400, "Invalid stored name")
+    safe_filename = Path(original_filename).name
+    if safe_filename != original_filename or safe_filename in {".", ".."}:
+        raise HTTPException(400, "Invalid original filename")
 
     path = settings.upload_path / "protected" / stored_name
     if not path.exists():
@@ -264,5 +274,5 @@ async def download_decrypted(
     return StreamingResponse(
         path.open("rb"),
         media_type="application/octet-stream",
-        headers={"Content-Disposition": f'attachment; filename="{original_filename}"'},
+        headers={"Content-Disposition": f'attachment; filename="{safe_filename}"'},
     )

@@ -92,10 +92,9 @@ def test_wrong_password():
 
 
 def test_empty_password_encrypt():
-    """Encryption with an empty password should still work (no backend restriction)."""
-    blob = encrypt_file(SAMPLE_PDF, "", "test.pdf")
-    plaintext, _ = decrypt_file(blob, "")
-    assert plaintext == SAMPLE_PDF
+    """Encryption with an empty password must be rejected."""
+    with pytest.raises(ValueError, match="Password is required"):
+        encrypt_file(SAMPLE_PDF, "", "test.pdf")
 
 
 def test_password_mismatch():

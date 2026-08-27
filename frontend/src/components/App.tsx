@@ -31,6 +31,7 @@ export default function App({ token, signout, api }: { token: string; signout: (
         headers: { Authorization: `Bearer ${token}` },
       });
       const j = await r.json();
+      if (r.status === 401) { signout(); return; }
       if (!r.ok) throw new Error(j.detail);
       setData(j);
     } catch (e: any) { setError(e.message); }
@@ -60,7 +61,7 @@ export default function App({ token, signout, api }: { token: string; signout: (
         {error && <p className="error toast">{error}</p>}
         {tab === 'dashboard' && <Dashboard data={data} open={setScan} />}
         {tab === 'upload' && <Upload onStart={f => { setPendingFile(f); setTab('dashboard'); }} />}
-        {tab === 'history' && <HistoryPage token={token} open={setScan} />}
+        {tab === 'history' && <HistoryPage token={token} open={setScan} onAuthFailure={signout} />}
         {tab === 'encrypt' && <Encrypt token={token} api={api} />}
         {tab === 'decrypt' && <Decrypt token={token} api={api} />}
         {tab === 'encrypt-history' && <EncryptHistory token={token} api={api} />}
@@ -71,6 +72,7 @@ export default function App({ token, signout, api }: { token: string; signout: (
             token={token}
             onDone={s => { setScan(s); setPendingFile(undefined); load(); }}
             onCancel={() => setPendingFile(undefined)}
+            onAuthFailure={signout}
           />
         )}
       </main>
