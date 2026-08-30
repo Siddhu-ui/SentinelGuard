@@ -2,6 +2,7 @@ import React,{useEffect,useState} from 'react';
 import {createRoot} from 'react-dom/client';
 import Auth from './components/Auth';
 import App from './components/App';
+import Landing from './components/Landing';
 import './style.css';
 
 // Use the verified backend instance that runs from the repository source tree.
@@ -20,6 +21,7 @@ export async function api(path:string, token:string, opts:RequestInit={}){
 
 function Root(){
   const [token,setToken]=useState(localStorage.token||'');
+  const [authMode,setAuthMode]=useState<'login'|'register'|null>(null);
   const [checking,setChecking]=useState(!!token);
 
   useEffect(()=>{
@@ -31,7 +33,8 @@ function Root(){
   },[token]);
 
   if(checking)return <main className="auth"><div className="auth-card"><p className="muted">Restoring secure session…</p></div></main>;
-  if(!token)return <Auth api={api} onAuth={t=>{localStorage.token=t;setToken(t)}}/>;
+  if(!token&&!authMode)return <Landing onSignIn={()=>setAuthMode('login')} onRegister={()=>setAuthMode('register')}/>;
+  if(!token)return <Auth api={api} initialRegister={authMode==='register'} onBack={()=>setAuthMode(null)} onAuth={t=>{localStorage.token=t;setToken(t);setAuthMode(null)}}/>;
   return <App token={token} api={api} signout={()=>{localStorage.removeItem('token');setToken('')}}/>;
 }
 
