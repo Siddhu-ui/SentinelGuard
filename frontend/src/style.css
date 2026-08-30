@@ -108,12 +108,15 @@ h2{font-size:15px;margin:30px 0 14px;text-transform:uppercase;letter-spacing:.12
 .table{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--panel)}
 .row{
   width:100%;border:0;border-bottom:1px solid var(--line);background:transparent;color:#ffe4ea;
-  padding:14px 16px;display:grid;grid-template-columns:1fr 160px 200px;align-items:center;text-align:left;
+  padding:14px 16px;display:grid;grid-template-columns:1fr 160px 200px 80px;align-items:center;text-align:left;
   transition:background .2s ease;
 }
 .row:hover{background:#1c0a10}
 .row:last-child{border-bottom:0}
 .row span:first-child{display:grid;gap:4px}
+.row-main{display:grid;gap:4px;text-align:left;background:none;border:0;color:inherit;padding:0;cursor:pointer;font:inherit}
+.delete-scan{justify-self:end;background:transparent;border:1px solid transparent;color:#a9828b;border-radius:6px;padding:6px 8px;font-size:11px;cursor:pointer}
+.delete-scan:hover{color:#ff8b98;border-color:#6b2430;background:rgba(225,29,46,.08)}
 .row small{color:var(--muted);font-size:12px}
 .badge{font-size:11px;font-weight:700;padding:5px 9px;border-radius:6px;justify-self:start;letter-spacing:.08em;text-transform:uppercase;border:1px solid currentColor;background:rgba(0,0,0,.25)}
 .badge.lg{font-size:13px;padding:7px 12px}
@@ -122,6 +125,11 @@ h2{font-size:15px;margin:30px 0 14px;text-transform:uppercase;letter-spacing:.12
 .badge.medium{color:#fdba74}
 .badge.high,.badge.critical{color:var(--accent-3);box-shadow:var(--glow-soft)}
 .empty{padding:40px;text-align:center;color:var(--muted);background:var(--panel);border:1px dashed var(--line);border-radius:12px}
+.empty small{display:inline-block;margin-top:8px;color:var(--muted)}
+.history-actions{display:flex;align-items:center;gap:14px;margin:14px 0}.danger-ghost{display:inline-flex;align-items:center;gap:7px;color:#ff9aa5!important}.success-msg{color:#7be39a;font-size:13px}
+.confirm-backdrop{position:fixed;inset:0;z-index:20;background:rgba(3,1,2,.78);display:grid;place-items:center;padding:20px}
+.confirm-modal{width:min(460px,100%);background:#17080d;border:1px solid var(--line-2);border-radius:14px;padding:24px;box-shadow:0 20px 70px rgba(0,0,0,.55)}
+.confirm-modal h2{margin:0 0 12px}.confirm-modal p{line-height:1.5}.confirm-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:22px}.danger-btn{background:#c51d32;color:#fff;border:1px solid #ef5263;border-radius:8px;padding:10px 16px;font-weight:700;cursor:pointer}.danger-btn:disabled{opacity:.6;cursor:wait}
 
 /* ---------- Drop zone ---------- */
 .drop{
@@ -515,7 +523,15 @@ svg.linearGradient{display:none}
   position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none!important;border:0!important;color:var(--muted);padding:4px!important;
 }
 .pw-toggle:hover{color:var(--accent-2)!important}
+
+/* Password strength indicator */
+.pw-strength{margin:10px 0;padding:10px;background:#0e0608;border:1px solid var(--line);border-radius:8px}
+.strength-bar{height:6px;background:#1a0810;border-radius:3px;overflow:hidden;border:1px solid #2a0e14;margin-bottom:6px}
+.strength-fill{height:100%;transition:width 0.3s ease,background-color 0.3s ease;border-radius:3px}
+.strength-text{margin:0;font-size:12px;text-transform:uppercase;letter-spacing:0.08em;font-weight:500}
+
 .enc-errors{margin:6px 0}
+.score-breakdown{margin:18px 0}.breakdown-row{display:grid;gap:3px;padding:9px 0;border-bottom:1px solid var(--line);font-size:12px}.breakdown-row b{color:#fda4af}.breakdown-row small{color:var(--muted);line-height:1.4}
 .enc-errors p{margin:4px 0;font-size:12px;color:#fda4af;display:flex;align-items:center;gap:5px}
 
 /* Encryption success card */

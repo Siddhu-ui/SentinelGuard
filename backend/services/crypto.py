@@ -227,15 +227,14 @@ def decrypt_file(data: bytes, password: str) -> tuple[bytes, dict]:
         plaintext = aesgcm.decrypt(nonce, ciphertext, parsed["authenticated_header"])
     except Exception as e:
         raise ValueError(
-            "Decryption failed. The password may be incorrect or the "
-            "encrypted file may have been modified or corrupted."
+            "Decryption failed: incorrect password or modified/corrupted encrypted file. (DECRYPTION_AUTH_FAILED)"
         ) from e
 
     # Verify SHA-256 integrity
     computed_sha256 = hashlib.sha256(plaintext).digest()
     if computed_sha256 != parsed["original_sha256"]:
         raise ValueError(
-            "Integrity verification failed: SHA-256 hash mismatch after decryption."
+            "Decryption failed: integrity verification failed after decryption. (DECRYPTION_INTEGRITY_FAILED)"
         )
 
     return plaintext, {

@@ -4,7 +4,8 @@ import Auth from './components/Auth';
 import App from './components/App';
 import './style.css';
 
-const API=import.meta.env.VITE_API_URL||'http://localhost:8000';
+// Use the verified backend instance that runs from the repository source tree.
+const API=import.meta.env.VITE_API_URL||'http://127.0.0.1:8001';
 
 export async function api(path:string, token:string, opts:RequestInit={}){
   const r=await fetch(API+path,{...opts,headers:{Authorization:`Bearer ${token}`,...(opts.headers||{})}});

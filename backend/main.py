@@ -15,7 +15,10 @@ from services.crypto import encrypt_file, decrypt_file, get_download_filename
 from services.report import render_pdf
 from settings import settings
 
-Base.metadata.create_all(bind=engine); settings.upload_path.mkdir(parents=True, exist_ok=True); settings.upload_path.joinpath("protected").mkdir(parents=True, exist_ok=True)
+Base.metadata.create_all(bind=engine)
+from database import migrate_legacy_schema
+migrate_legacy_schema()
+settings.upload_path.mkdir(parents=True, exist_ok=True); settings.upload_path.joinpath("protected").mkdir(parents=True, exist_ok=True)
 app=FastAPI(title="SentinelGuard API", version="1.0.0", description="Static pre-analysis of suspicious files. Files are never executed.")
 app.add_middleware(CORSMiddleware, allow_origins=[x.strip() for x in settings.cors_origins.split(",")], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
@@ -78,6 +81,15 @@ def delete_scan(scan_id:int,user:User=Depends(current_user),db:Session=Depends(g
     if not scan: raise HTTPException(404,"Scan not found")
     (settings.upload_path/scan.stored_name).unlink(missing_ok=True); db.delete(scan); db.commit()
 
+@app.delete("/scans", status_code=204)
+def delete_all_scans(user:User=Depends(current_user), db:Session=Depends(get_db)):
+    """Clear only the authenticated user's scan history and stored scan files."""
+    scans = db.scalars(select(Scan).where(Scan.user_id == user.id)).unique().all()
+    for scan in scans:
+        (settings.upload_path / scan.stored_name).unlink(missing_ok=True)
+        db.delete(scan)
+    db.commit()
+
 @app.get("/scans/{scan_id}/report.pdf")
 def report(scan_id:int,user:User=Depends(current_user),db:Session=Depends(get_db)):
     scan=db.scalar(select(Scan).where(Scan.id==scan_id,Scan.user_id==user.id))
@@ -136,10 +148,13 @@ async def encrypt(
     # Record in encryption history
     record = EncryptionRecord(
         user_id=user.id,
+        operation="encrypt",
         original_filename=original_name,
         encrypted_filename=encrypted_name,
+        stored_name=encrypted_name,
         file_size=len(sguard_blob),
         sha256=original_sha256,
+        original_sha256=original_sha256,
         algorithm="AES-256-GCM",
         kdf="Argon2id",
         status="success",

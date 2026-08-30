@@ -44,10 +44,13 @@ class EncryptionRecord(Base):
     __tablename__ = "encryption_records"
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    operation: Mapped[str] = mapped_column(String(12), default="encrypt")
     original_filename: Mapped[str] = mapped_column(String(255))
     encrypted_filename: Mapped[str] = mapped_column(String(255))
+    stored_name: Mapped[str] = mapped_column(String(64), default="")
     file_size: Mapped[int] = mapped_column(Integer)
     sha256: Mapped[str] = mapped_column(String(64))
+    original_sha256: Mapped[str] = mapped_column(String(64), default="")
     algorithm: Mapped[str] = mapped_column(String(50))
     kdf: Mapped[str] = mapped_column(String(50))
     status: Mapped[str] = mapped_column(String(20), default="success")

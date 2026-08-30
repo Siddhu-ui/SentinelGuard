@@ -92,7 +92,7 @@ export default function VirtualScan({
   useEffect(()=>{
     uploadRef.current=(async()=>{
       const fd=new FormData();fd.append('file',file);
-      const apiUrl=(import.meta as any).env?.VITE_API_URL||'http://localhost:8000';
+      const apiUrl=(import.meta as any).env?.VITE_API_URL||'http://127.0.0.1:8001';
       const r=await fetch(apiUrl+'/scans',{
         method:'POST',headers:{Authorization:`Bearer ${token}`},body:fd
       });

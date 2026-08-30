@@ -15,7 +15,7 @@ def render_pdf(scan: Scan) -> BytesIO:
     y-=8; c.setFont("Helvetica-Bold",12); c.drawString(42,y,"Findings"); y-=20; c.setFont("Helvetica",10)
     details=json.loads(scan.details_json)
     for issue in details.get("issues",[]) or [{"message":"No suspicious indicators detected."}]:
-        text=issue["message"]
+        text=f"+{issue.get('weight', 0)} {issue['message']} [{issue.get('confidence','unknown')} confidence]"
         for line in [text[i:i+94] for i in range(0,len(text),94)]: c.drawString(48,y,"• "+line); y-=16
     y-=8; c.setFont("Helvetica-Bold",12); c.drawString(42,y,"Recommendation"); y-=18; c.setFont("Helvetica",10); c.drawString(42,y,details.get("recommendation","Review findings."))
     c.showPage(); c.save(); out.seek(0); return out

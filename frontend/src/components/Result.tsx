@@ -9,7 +9,7 @@ export default function Result({scan,token,close}:{scan:Scan;token:string;close:
   const download=async()=>{
     setDownloading(true);
     try{
-      const apiUrl=(import.meta as any).env?.VITE_API_URL||'http://localhost:8000';
+      const apiUrl=(import.meta as any).env?.VITE_API_URL||'http://127.0.0.1:8001';
       const r=await fetch(apiUrl+`/scans/${scan.id}/report.pdf`,{headers:{Authorization:`Bearer ${token}`}});
       const blob=await r.blob();
       const url=URL.createObjectURL(blob);
@@ -68,6 +68,13 @@ export default function Result({scan,token,close}:{scan:Scan;token:string;close:
           ))
           :<div className="finding ok"><AlertTriangle/><span><b>Clean</b><br/>No suspicious indicators detected.</span></div>
         }
+
+        {scan.details?.score_breakdown?.length > 0 && <div className="score-breakdown">
+          <h2>Why this score</h2>
+          {scan.details.score_breakdown.map((item:any, i:number) => <div className="breakdown-row" key={i}>
+            <span><b>+{item.weight}</b> {item.category}</span><small>{item.evidence}</small>
+          </div>)}
+        </div>}
 
         <button className="primary" onClick={download} disabled={downloading}>
           <Download size={16}/> {downloading?'Rendering…':'Download PDF report'}
