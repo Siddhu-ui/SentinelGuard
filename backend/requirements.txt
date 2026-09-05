@@ -10,6 +10,8 @@ PyJWT>=2.9
 bcrypt>=4.2
 cryptography>=43.0
 reportlab>=4.2
+pypdf>=5.0
+httpx2>=0.1
 Pillow>=10.4
 numpy>=2.0
 python-magic>=0.4.27; platform_system != "Windows"

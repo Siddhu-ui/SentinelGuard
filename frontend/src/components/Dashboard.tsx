@@ -3,7 +3,7 @@ import {AlertTriangle,ShieldCheck} from 'lucide-react';
 import {Scan} from './App';
 import ScanTable from './ScanTable';
 
-export default function Dashboard({data,open}:{data:any;open:(s:Scan)=>void}){
+export default function Dashboard({data,open,onDelete}:{data:any;open:(s:Scan)=>void;onDelete?:(id:number)=>Promise<void>}){
   if(!data)return <p className="muted">Loading dashboard…</p>;
   const total=data.total||0;
   const threats=data.threats||0;
@@ -38,7 +38,7 @@ export default function Dashboard({data,open}:{data:any;open:(s:Scan)=>void}){
       </div>
 
       <h2><ShieldCheck size={18}/> Recent scans</h2>
-      <ScanTable scans={data.recent||[]} open={open}/>
+      <ScanTable scans={data.recent||[]} open={open} onDelete={onDelete}/>
     </>
   );
 }

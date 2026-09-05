@@ -30,10 +30,38 @@ export default function Encrypt({ token, api }: Props) {
   // Reset when file changes
   useEffect(() => { setResult(null); setError(''); }, [file]);
 
+  // Password strength calculation
+  const getStrength = (pwd: string): { level: string; color: string; } => {
+    if (!pwd) return { level: 'None', color: '#666' };
+    let strength = 0;
+    if (pwd.length >= 10) strength++;
+    if (pwd.length >= 16) strength++;
+    if (/[a-z]/.test(pwd)) strength++;
+    if (/[A-Z]/.test(pwd)) strength++;
+    if (/[0-9]/.test(pwd)) strength++;
+    if (/[^a-zA-Z0-9]/.test(pwd)) strength++;
+    const levels = ['Very Weak', 'Weak', 'Fair', 'Good', 'Strong', 'Very Strong'];
+    const colors = ['#ff6b78', '#ff9a3d', '#fbbf24', '#fcd34d', '#86efac', '#22c55e'];
+    return { level: levels[Math.min(strength - 1, 5)], color: colors[Math.min(strength - 1, 5)] };
+  };
+  const pwStrength = getStrength(password);
+
+  // Validation logic: only show mismatch error if user has entered confirmation password
   const errors: string[] = [];
-  if (password && password.length < 10) errors.push('Password must be at least 10 characters');
-  if (confirm && password !== confirm) errors.push('Passwords do not match');
-  const valid = !!file && password.length >= 10 && password === confirm;
+  if (password && password.length < 10) {
+    errors.push('Password must be at least 10 characters');
+  }
+  if (confirm.length > 0 && password !== confirm) {
+    errors.push('Passwords do not match');
+  }
+
+  // Button enabled only when: file selected + password >= 10 chars + confirmation not empty + both match + not encrypting
+  const valid =
+    !!file &&
+    password.length >= 10 &&
+    confirm.length > 0 &&
+    password === confirm &&
+    !busy;
 
   const handleEncrypt = async () => {
     if (!file || !valid) return;
@@ -45,6 +73,10 @@ export default function Encrypt({ token, api }: Props) {
       form.append('password', password);
       const res = await api('/encrypt', token, { method: 'POST', body: form });
       setResult(res);
+      // Clear password from memory after successful encryption
+      setPassword('');
+      setConfirm('');
+      if (inputRef.current) inputRef.current.value = '';
     } catch (e: any) {
       setError(e.message || 'Encryption failed. Please try again.');
     } finally {
@@ -55,7 +87,7 @@ export default function Encrypt({ token, api }: Props) {
   const handleDownload = async () => {
     if (!result) return;
     try {
-      const r = await fetch((import.meta.env.VITE_API_URL || 'http://localhost:8000') + result.download_url, {
+      const r = await fetch((import.meta.env.VITE_API_URL || 'http://127.0.0.1:8001') + result.download_url, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!r.ok) throw new Error('Download failed');
@@ -163,11 +195,28 @@ export default function Encrypt({ token, api }: Props) {
             value={password}
             onChange={e => setPassword(e.target.value)}
             minLength={10}
+            autoComplete="new-password"
           />
           <button type="button" className="pw-toggle" onClick={() => setShowPw(!showPw)}>
             {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
           </button>
         </div>
+
+        {/* Password Strength */}
+        {password && (
+          <div className="pw-strength">
+            <div className="strength-bar">
+              <div className="strength-fill" style={{
+                width: `${Math.min(password.length / 20 * 100, 100)}%`,
+                backgroundColor: pwStrength.color,
+                transition: 'all 0.3s ease'
+              }} />
+            </div>
+            <p className="strength-text" style={{ color: pwStrength.color }}>
+              Strength: <strong>{pwStrength.level}</strong>
+            </p>
+          </div>
+        )}
 
         {/* Confirm password */}
         <div className="pw-field">
@@ -176,7 +225,13 @@ export default function Encrypt({ token, api }: Props) {
             placeholder="Confirm password"
             value={confirm}
             onChange={e => setConfirm(e.target.value)}
+            autoComplete="new-password"
           />
+          {confirm && password === confirm && (
+            <div style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', color: '#22c55e', fontSize: '12px' }}>
+              ✓ Passwords match
+            </div>
+          )}
         </div>
 
         {/* Validation messages */}

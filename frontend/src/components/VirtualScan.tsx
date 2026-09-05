@@ -33,9 +33,9 @@ function regionsFor(size:number):Step['region'][]{
 }
 
 export default function VirtualScan({
-  file,token,onDone,onCancel,
+  file,token,onDone,onCancel,onAuthFailure,
 }:{
-  file:File;token:string;onDone:(s:Scan)=>void;onCancel:()=>void;
+  file:File;token:string;onDone:(s:Scan)=>void;onCancel:()=>void;onAuthFailure:()=>void;
 }){
   const [stepIdx,setStepIdx]=useState(0);
   const [logs,setLogs]=useState<string[]>([]);
@@ -92,9 +92,11 @@ export default function VirtualScan({
   useEffect(()=>{
     uploadRef.current=(async()=>{
       const fd=new FormData();fd.append('file',file);
-      const r=await fetch((import.meta as any).env?.VITE_API_URL||'http://localhost:8000'+'/scans',{
+      const apiUrl=(import.meta as any).env?.VITE_API_URL||'http://127.0.0.1:8001';
+      const r=await fetch(apiUrl+'/scans',{
         method:'POST',headers:{Authorization:`Bearer ${token}`},body:fd
       });
+      if(r.status===401){onAuthFailure();throw new Error('Your session has expired. Please sign in again.');}
       if(!r.ok)throw new Error((await r.json().catch(()=>({detail:'Scan failed'}))).detail);
       return r.json();
     })();

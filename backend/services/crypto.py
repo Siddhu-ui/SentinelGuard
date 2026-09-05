@@ -17,7 +17,7 @@ SentinelGuard file encryption/decryption service.
 from __future__ import annotations
 
 import hashlib
-import os
+import secrets
 import struct
 import logging
 from pathlib import Path
@@ -96,18 +96,16 @@ def encrypt_file(
     original_filename: str,
 ) -> bytes:
     """Encrypt file bytes and return a complete .sguard blob."""
-    salt = os.urandom(16)
-    nonce = os.urandom(NONCE_LEN)
+    if not password:
+        raise ValueError("Password is required")
+    original_filename = Path(original_filename).name
+    if not original_filename or original_filename in {".", ".."}:
+        raise ValueError("A valid original filename is required")
+
+    salt = secrets.token_bytes(16)
+    nonce = secrets.token_bytes(NONCE_LEN)
     key, kdf_id = derive_key(password, salt)
-
-    # Encrypt
-    aesgcm = AESGCM(key)
-    ciphertext = aesgcm.encrypt(nonce, plaintext, None)  # includes GCM tag
-
-    # Compute original SHA-256
     orig_sha256 = hashlib.sha256(plaintext).digest()
-
-    # Build .sguard binary
     orig_name_bytes = original_filename.encode("utf-8")
     header = bytearray()
     header += MAGIC                              # 6 bytes
@@ -120,9 +118,11 @@ def encrypt_file(
     header += struct.pack("<H", len(orig_name_bytes))  # 2 bytes
     header += orig_name_bytes                    # variable
     header += orig_sha256                        # 32 bytes
-    header += ciphertext                         # variable
 
-    return bytes(header)
+    # Authenticate the metadata as well as the file contents.
+    ciphertext = AESGCM(key).encrypt(nonce, plaintext, bytes(header))
+
+    return bytes(header) + ciphertext
 
 
 def parse_sguard(data: bytes) -> dict:
@@ -130,7 +130,8 @@ def parse_sguard(data: bytes) -> dict:
 
     Raises ValueError on invalid format / bad magic / wrong version.
     """
-    if len(data) < 6 + 1 + 1 + 2 + 2 + 2 + 32:
+    minimum_length = 6 + 1 + 1 + 2 + 2 + 2 + 32 + 16
+    if len(data) < minimum_length:
         raise ValueError("File too small to be a valid .sguard file")
 
     offset = 0
@@ -149,24 +150,39 @@ def parse_sguard(data: bytes) -> dict:
 
     # Salt
     salt_len, offset = _read_uint16(data, offset)
+    if salt_len != 16 or offset + salt_len > len(data):
+        raise ValueError("Invalid .sguard file: invalid salt")
     salt = data[offset:offset + salt_len]
     offset += salt_len
 
     # Nonce
     nonce_len, offset = _read_uint16(data, offset)
+    if nonce_len != NONCE_LEN or offset + nonce_len > len(data):
+        raise ValueError("Invalid .sguard file: invalid nonce")
     nonce = data[offset:offset + nonce_len]
     offset += nonce_len
 
     # Original filename
     name_len, offset = _read_uint16(data, offset)
-    orig_name = data[offset:offset + name_len].decode("utf-8", errors="replace")
+    if not name_len or offset + name_len > len(data):
+        raise ValueError("Invalid .sguard file: invalid filename")
+    try:
+        orig_name = data[offset:offset + name_len].decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise ValueError("Invalid .sguard file: filename is not valid UTF-8") from exc
+    if Path(orig_name).name != orig_name or orig_name in {".", ".."}:
+        raise ValueError("Invalid .sguard file: unsafe filename")
     offset += name_len
 
     # SHA-256
+    if offset + 32 > len(data):
+        raise ValueError("Invalid .sguard file: missing SHA-256")
     orig_sha256 = data[offset:offset + 32]
     offset += 32
 
     ciphertext = data[offset:]
+    if len(ciphertext) < 16:
+        raise ValueError("Invalid .sguard file: missing authentication tag")
 
     return {
         "version": version,
@@ -176,6 +192,7 @@ def parse_sguard(data: bytes) -> dict:
         "original_filename": orig_name,
         "original_sha256": orig_sha256,
         "ciphertext": ciphertext,
+        "authenticated_header": data[:offset],
     }
 
 
@@ -207,18 +224,17 @@ def decrypt_file(data: bytes, password: str) -> tuple[bytes, dict]:
     # Decrypt + verify GCM authentication tag
     try:
         aesgcm = AESGCM(key)
-        plaintext = aesgcm.decrypt(nonce, ciphertext, None)
+        plaintext = aesgcm.decrypt(nonce, ciphertext, parsed["authenticated_header"])
     except Exception as e:
         raise ValueError(
-            "Decryption failed. The password may be incorrect or the "
-            "encrypted file may have been modified or corrupted."
+            "Decryption failed: incorrect password or modified/corrupted encrypted file. (DECRYPTION_AUTH_FAILED)"
         ) from e
 
     # Verify SHA-256 integrity
     computed_sha256 = hashlib.sha256(plaintext).digest()
     if computed_sha256 != parsed["original_sha256"]:
         raise ValueError(
-            "Integrity verification failed: SHA-256 hash mismatch after decryption."
+            "Decryption failed: integrity verification failed after decryption. (DECRYPTION_INTEGRITY_FAILED)"
         )
 
     return plaintext, {

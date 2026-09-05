@@ -1,8 +1,8 @@
 import React,{useState} from 'react';
 import {ShieldCheck} from 'lucide-react';
 
-export default function Auth({api,onAuth}:{api:(p:string,t:string,o?:RequestInit)=>Promise<any>; onAuth:(t:string)=>void}){
-  const [register,setRegister]=useState(false);
+export default function Auth({api,onAuth,initialRegister=false,onBack}:{api:(p:string,t:string,o?:RequestInit)=>Promise<any>; onAuth:(t:string)=>void; initialRegister?:boolean; onBack?:()=>void}){
+  const [register,setRegister]=useState(initialRegister);
   const [email,setEmail]=useState('');
   const [name,setName]=useState('');
   const [password,setPassword]=useState('');
@@ -13,7 +13,8 @@ export default function Auth({api,onAuth}:{api:(p:string,t:string,o?:RequestInit
     e.preventDefault();
     setBusy(true);setError('');
     try{
-      const r=await fetch((import.meta as any).env?.VITE_API_URL||'http://localhost:8000'+`/auth/${register?'register':'login'}`,{
+      const apiUrl=(import.meta as any).env?.VITE_API_URL||'http://127.0.0.1:8001';
+      const r=await fetch(`${apiUrl}/auth/${register?'register':'login'}`,{
         method:'POST',headers:{'Content-Type':'application/json'},
         body:JSON.stringify(register?{email,display_name:name,password}:{email,password})
       });
@@ -26,6 +27,7 @@ export default function Auth({api,onAuth}:{api:(p:string,t:string,o?:RequestInit
 
   return (
     <main className="auth">
+      {onBack&&<button type="button" className="auth-back" onClick={onBack}>← Back to SentinelGuard</button>}
       <div className="auth-bg">
         <div className="grid-overlay"/>
         <div className="scanline"/>
