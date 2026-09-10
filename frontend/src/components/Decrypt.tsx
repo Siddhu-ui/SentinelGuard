@@ -50,7 +50,7 @@ export default function Decrypt({ token, api }: Props) {
   const handleDownload = async () => {
     if (!result) return;
     try {
-      const r = await fetch((import.meta.env.VITE_API_URL || 'http://localhost:8000') + result.download_url, {
+      const r = await fetch((import.meta.env.VITE_API_URL || 'http://127.0.0.1:8001') + result.download_url, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!r.ok) throw new Error('Download failed');

@@ -27,14 +27,16 @@ export default function App({ token, signout, api }: { token: string; signout: (
 
   const load = async () => {
     try {
-      const r = await fetch((import.meta.env.VITE_API_URL || 'http://localhost:8000') + '/dashboard', {
+      const r = await fetch((import.meta.env.VITE_API_URL || 'http://127.0.0.1:8001') + '/dashboard', {
         headers: { Authorization: `Bearer ${token}` },
       });
       const j = await r.json();
+      if (r.status === 401) { signout(); return; }
       if (!r.ok) throw new Error(j.detail);
       setData(j);
     } catch (e: any) { setError(e.message); }
   };
+  const deleteScan=async(id:number)=>{const r=await fetch((import.meta.env.VITE_API_URL||'http://127.0.0.1:8001')+'/scans/'+id,{method:'DELETE',headers:{Authorization:`Bearer ${token}`}});if(r.status===401){signout();throw new Error('Your session has expired. Please sign in again.')}if(!r.ok)throw new Error('Unable to delete scan. Please try again.');await load();};
 
   useEffect(() => { load(); }, []);
 
@@ -58,9 +60,9 @@ export default function App({ token, signout, api }: { token: string; signout: (
       </aside>
       <main className="content">
         {error && <p className="error toast">{error}</p>}
-        {tab === 'dashboard' && <Dashboard data={data} open={setScan} />}
+        {tab === 'dashboard' && <Dashboard data={data} open={setScan} onDelete={deleteScan} />}
         {tab === 'upload' && <Upload onStart={f => { setPendingFile(f); setTab('dashboard'); }} />}
-        {tab === 'history' && <HistoryPage token={token} open={setScan} />}
+        {tab === 'history' && <HistoryPage token={token} open={setScan} onAuthFailure={signout} />}
         {tab === 'encrypt' && <Encrypt token={token} api={api} />}
         {tab === 'decrypt' && <Decrypt token={token} api={api} />}
         {tab === 'encrypt-history' && <EncryptHistory token={token} api={api} />}
@@ -71,6 +73,7 @@ export default function App({ token, signout, api }: { token: string; signout: (
             token={token}
             onDone={s => { setScan(s); setPendingFile(undefined); load(); }}
             onCancel={() => setPendingFile(undefined)}
+            onAuthFailure={signout}
           />
         )}
       </main>

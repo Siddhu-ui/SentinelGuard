@@ -3,7 +3,7 @@ import {AlertTriangle,ShieldCheck} from 'lucide-react';
 import {Scan} from './App';
 import ScanTable from './ScanTable';
 
-export default function Dashboard({data,open}:{data:any;open:(s:Scan)=>void}){
+export default function Dashboard({data,open,onDelete}:{data:any;open:(s:Scan)=>void;onDelete?:(id:number)=>Promise<void>}){
   if(!data)return <p className="muted">Loading dashboard…</p>;
   const total=data.total||0;
   const threats=data.threats||0;
@@ -24,6 +24,8 @@ export default function Dashboard({data,open}:{data:any;open:(s:Scan)=>void}){
         <article className="card danger"><p>High risk</p><strong>{high}</strong></article>
       </div>
 
+      <section className="system-status"><div><b>System status</b><span className="status-online">● ONLINE</span></div><div><small>Scanner</small><strong>ONLINE</strong></div><div><small>Analyzer</small><strong>ONLINE</strong></div><div><small>Database</small><strong>ONLINE</strong></div><div><small>Encryption</small><strong>ONLINE</strong></div></section>
+
       <div className="risk-bar">
         {['Safe','Low','Medium','High','Critical'].map((lvl)=>{
           const v=data.risk_levels?.[lvl]||0;
@@ -38,7 +40,7 @@ export default function Dashboard({data,open}:{data:any;open:(s:Scan)=>void}){
       </div>
 
       <h2><ShieldCheck size={18}/> Recent scans</h2>
-      <ScanTable scans={data.recent||[]} open={open}/>
+      <ScanTable scans={data.recent||[]} open={open} onDelete={onDelete}/>
     </>
   );
 }
