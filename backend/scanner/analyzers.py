@@ -96,6 +96,30 @@ def image_stego(data: bytes, file_ext: str) -> tuple[float, list[dict]]:
         return round(score, 1), [_issue("steganography","low",f"LSB distribution is {ratio:.3f}; supporting heuristic only.",f"Pixel LSB ratio={ratio:.3f}.","low",int(score))] if score > 6 else []
     except Exception: return 0.0, []
 
+def _hex_preview(data: bytes, limit: int = 256) -> list[dict]:
+    """Return a bounded, UI-friendly binary preview; never expose the whole file."""
+    rows = []
+    for offset in range(0, min(len(data), limit), 16):
+        chunk = data[offset:offset + 16]
+        rows.append({"offset": f"{offset:08X}", "hex": " ".join(f"{b:02X}" for b in chunk), "ascii": "".join(chr(b) if 32 <= b < 127 else "." for b in chunk)})
+    return rows
+
+def _analysis_sections(issues: list[dict], signatures_found: list[dict], entropy_value: float) -> list[dict]:
+    groups = {
+        "Structural analysis": {"keys": {"signature-mismatch", "embedded-executable", "pdf-action", "pdf-javascript", "pdf-embedded-file"}, "explanation": "Headers, actions, embedded objects, and file structure."},
+        "Content analysis": {"keys": {"pdf-date", "pdf-metadata"}, "explanation": "Observable document content and metadata consistency signals."},
+        "Metadata analysis": {"keys": {"pdf-metadata"}, "explanation": "Document metadata is a supporting signal, not proof of tampering."},
+        "Steganography analysis": {"keys": {"steganography"}, "explanation": "Potential steganographic indicators from bounded image heuristics."},
+        "Polyglot analysis": {"keys": {"embedded-executable"}, "explanation": "Validated secondary signatures only; incidental byte patterns are ignored."},
+        "Integrity analysis": {"keys": {"signature-mismatch", "pdf-date"}, "explanation": "Hash, declared type, and consistency indicators."},
+    }
+    result = []
+    for name, spec in groups.items():
+        matched = [i for i in issues if i["category"] in spec["keys"]]
+        severity = max((i["severity"] for i in matched), key=lambda value: {"none": 0, "low": 1, "medium": 2, "high": 3, "critical": 4}.get(value, 0), default="none")
+        result.append({"name": name, "score": min(100, sum(int(i["weight"]) for i in matched)), "findings": len(matched), "severity": severity, "explanation": spec["explanation"]})
+    return result
+
 def analyze(path: Path, extension: str) -> dict:
     data = read_sample(path); sigs = signatures(data); issues = []
     actual = next((s["type"] for s in sigs if s["offset"] == 0), "Unknown binary data")
@@ -109,4 +133,6 @@ def analyze(path: Path, extension: str) -> dict:
     score = min(100, sum(int(i["weight"]) for i in issues))
     level = "Safe" if score <= 20 else "Low" if score <= 40 else "Medium" if score <= 60 else "High" if score <= 80 else "Critical"
     recommendation = {"Safe":"No action required; retain normal file hygiene.","Low":"Confirm the source before opening.","Medium":"Verify the source and open only in an isolated environment.","High":"Do not open directly; investigate in a sandbox.","Critical":"Quarantine the file and escalate to security personnel."}[level]
-    return {"sha256":sha256(path),"entropy":ent,"entropy_category":"High" if ent >= 7.75 else "Medium" if ent >= 5 else "Low","mime_type":actual,"signatures":sigs,"risk_score":score,"risk_level":level,"recommendation":recommendation,"steganography_confidence":stego,"issues":issues,"score_breakdown":[{"category":i["category"],"weight":i["weight"],"evidence":i["evidence"]} for i in issues]}
+    digest = sha256(path)
+    severity_breakdown = {level: sum(1 for i in issues if i["severity"] == level) for level in ("low", "medium", "high", "critical")}
+    return {"sha256":digest,"entropy":ent,"entropy_category":"High" if ent >= 7.75 else "Medium" if ent >= 5 else "Low","mime_type":actual,"signatures":sigs,"risk_score":score,"risk_level":level,"recommendation":recommendation,"steganography_confidence":stego,"issues":issues,"finding_count":len(issues),"severity_breakdown":severity_breakdown,"analysis_sections":_analysis_sections(issues, sigs, ent),"file_dna":{"type":actual,"mime_type":actual,"extension":extension,"size":path.stat().st_size,"sha256":digest,"entropy":ent,"signatures":sigs,"embedded_data":any(i["category"] == "pdf-embedded-file" for i in issues),"steganography_indicators":sum(1 for i in issues if i["category"] == "steganography"),"polyglot_indicators":sum(1 for i in issues if i["category"] == "embedded-executable")},"hex_preview":_hex_preview(data),"score_breakdown":[{"category":i["category"],"severity":i["severity"],"confidence":i["confidence"],"weight":i["weight"],"evidence":i["evidence"]} for i in issues]}

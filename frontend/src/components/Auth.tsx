@@ -21,7 +21,11 @@ export default function Auth({api,onAuth,initialRegister=false,onBack}:{api:(p:s
       const j=await r.json();
       if(!r.ok)throw new Error(j.detail||'Authentication failed');
       onAuth(j.access_token);
-    }catch(e:any){setError(e.message)}
+    }catch(e:any){
+      setError(e?.name==='TypeError' || e?.message==='Failed to fetch'
+        ? 'Cannot reach the SentinelGuard server. Start the backend on http://127.0.0.1:8001 and try again.'
+        : (e.message||'Authentication failed'))
+    }
     finally{setBusy(false)}
   };
 
