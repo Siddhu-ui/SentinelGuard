@@ -16,7 +16,10 @@ export async function api(path:string, token:string, opts:RequestInit={}){
     if(r.status===401)msg='Your session has expired. Please sign in again.';
     throw new Error(msg);
   }
-  return r.headers.get('content-type')?.includes('json')?r.json():r;
+  if(r.status===204)return null; // empty body: never attempt a JSON parse
+  const isJson=r.headers.get('content-type')?.includes('json');
+  if(isJson){const text=await r.text();return text?JSON.parse(text):null}
+  return r;
 }
 
 function Root(){

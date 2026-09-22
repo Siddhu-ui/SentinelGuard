@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Activity, FileUp, History, LogOut, ShieldCheck, Lock, Unlock, Key } from 'lucide-react';
+import { Activity, FileUp, History, LogOut, ShieldCheck, Lock, Unlock, Key, ShieldAlert, Vault } from 'lucide-react';
 import Dashboard from './Dashboard';
 import Upload from './Upload';
 import HistoryPage from './History';
@@ -8,15 +8,19 @@ import VirtualScan from './VirtualScan';
 import Encrypt from './Encrypt';
 import Decrypt from './Decrypt';
 import EncryptHistory from './EncryptHistory';
+import VaultPage from './VaultPage';
+import QuarantinePage from './QuarantinePage';
 
 export type Scan = {
   id: number; filename: string; sha256: string; mime_type: string; size: number;
-  entropy: number; risk_score: number; risk_level: string; details: any; threats: any[]; created_at: string;
+  entropy: number; risk_score: number; risk_level: string;
+  analysis_status?: 'completed' | 'failed' | string; analysis_error?: string | null;
+  details: any; threats: any[]; created_at: string;
 };
 
 export type ApiFn = (p: string, t: string, o?: RequestInit) => Promise<any>;
 
-type Tab = 'dashboard' | 'upload' | 'history' | 'encrypt' | 'decrypt' | 'encrypt-history';
+type Tab = 'dashboard' | 'upload' | 'history' | 'encrypt' | 'decrypt' | 'encrypt-history' | 'vault' | 'quarantine';
 
 export default function App({ token, signout, api }: { token: string; signout: () => void; api: ApiFn }) {
   const [tab, setTab] = useState<Tab>('dashboard');
@@ -49,6 +53,9 @@ export default function App({ token, signout, api }: { token: string; signout: (
           <button className={tab === 'upload' ? 'active' : ''} onClick={() => setTab('upload')}><FileUp /> Analyze file</button>
           <button className={tab === 'history' ? 'active' : ''} onClick={() => setTab('history')}><History /> History</button>
           <div className="nav-divider" />
+          <button className={tab === 'vault' ? 'active' : ''} onClick={() => setTab('vault')}><Vault /> Secure Vault</button>
+          <button className={tab === 'quarantine' ? 'active' : ''} onClick={() => setTab('quarantine')}><ShieldAlert /> Quarantine</button>
+          <div className="nav-divider" />
           <button className={tab === 'encrypt' ? 'active' : ''} onClick={() => setTab('encrypt')}><Lock /> Encrypt file</button>
           <button className={tab === 'decrypt' ? 'active' : ''} onClick={() => setTab('decrypt')}><Unlock /> Decrypt file</button>
           <button className={tab === 'encrypt-history' ? 'active' : ''} onClick={() => setTab('encrypt-history')}><Key /> Encryption history</button>
@@ -66,7 +73,12 @@ export default function App({ token, signout, api }: { token: string; signout: (
         {tab === 'encrypt' && <Encrypt token={token} api={api} />}
         {tab === 'decrypt' && <Decrypt token={token} api={api} />}
         {tab === 'encrypt-history' && <EncryptHistory token={token} api={api} />}
-        {scan && <Result scan={scan} token={token} close={() => setScan(undefined)} />}
+        {tab === 'vault' && <VaultPage token={token} api={api} />}
+        {tab === 'quarantine' && <QuarantinePage token={token} api={api} />}
+        {scan && <Result scan={scan} token={token} close={() => setScan(undefined)} onQuarantine={async () => {
+          if (!scan) return;
+          await api('/quarantine', token, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ scan_id: scan.id }) });
+        }} />}
         {pendingFile && (
           <VirtualScan
             file={pendingFile}

@@ -262,6 +262,31 @@ h2{font-size:15px;margin:30px 0 14px;text-transform:uppercase;letter-spacing:.12
 .finding em.sev{margin-left:auto;font-style:normal;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent-3);border:1px solid var(--accent);padding:3px 7px;border-radius:5px}
 .finding.ok{border-color:#16331f}
 .finding.ok svg{color:#7be39a}
+.finding.failed{border-color:#5c3a10}
+.finding.failed svg{color:#f2b34c}
+.finding-evidence{display:block;margin-top:4px;color:var(--muted);font-size:11px}
+.analysis-failed{display:flex;gap:14px;align-items:flex-start;padding:18px;border:1px solid #5c3a10;background:#1c1206;border-radius:12px;margin-bottom:16px}
+.analysis-failed svg{color:#f2b34c;flex-shrink:0;margin-top:2px}
+.analysis-failed b{color:#ffd9a0}
+.analysis-failed p{margin:4px 0 6px;color:#f4e8d8;font-size:13px}
+.analysis-failed small{color:var(--muted)}
+
+/* ── Vault & Quarantine ── */
+.feature-page{max-width:880px;margin:0 auto}
+.vault-card{margin:0 auto 18px;display:flex;flex-direction:column;gap:10px;max-width:460px}
+.vault-card label{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.vault-card input{background:#120a0e;border:1px solid var(--line);color:#ffe4ea;padding:11px 12px;border-radius:8px;font-size:14px}
+.pw-row{display:flex;gap:8px;align-items:center}
+.pw-row input{flex:1}
+.vault-actions{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin-bottom:16px}
+.vault-add{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.vault-add-btn{width:auto;padding:11px 16px}
+.vault-note{display:flex;gap:8px;align-items:center;font-size:12px;margin-top:14px}
+.q-reason{display:block;max-width:420px;white-space:normal;line-height:1.45;margin-top:3px}
+.q-btn{display:inline-flex;align-items:center;gap:6px}
+.result-actions{display:flex;flex-direction:column;gap:10px;margin-top:6px}
+.quarantine-done{opacity:.7;justify-content:center}
+@media(max-width:720px){.vault-actions{flex-direction:column;align-items:stretch}.quarantine-row{flex-wrap:wrap}}
 
 .primary{
   width:100%;margin-top:14px;background:linear-gradient(90deg,var(--accent),var(--accent-2));color:#fff;border:0;
