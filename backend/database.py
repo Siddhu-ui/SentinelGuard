@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, inspect, text
+﻿from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 from settings import settings
 
@@ -10,9 +10,12 @@ class Base(DeclarativeBase):
     pass
 
 def migrate_legacy_schema() -> None:
-    """Apply small additive migrations for existing local SQLite databases."""
+    """Apply safe additive migrations for existing local SQLite databases."""
     inspector = inspect(engine)
-    if "encryption_records" in inspector.get_table_names():
+    existing_tables = set(inspector.get_table_names())
+    
+    # 1. Update encryption_records columns if table exists
+    if "encryption_records" in existing_tables:
         columns = {c["name"] for c in inspector.get_columns("encryption_records")}
         additions = {
             "sha256": "VARCHAR(64) DEFAULT ''",
@@ -25,6 +28,23 @@ def migrate_legacy_schema() -> None:
             with engine.begin() as conn:
                 for name, definition in missing:
                     conn.execute(text(f"ALTER TABLE encryption_records ADD COLUMN {name} {definition}"))
+
+    # 2. Update users columns if table exists
+    if "users" in existing_tables:
+        columns = {c["name"] for c in inspector.get_columns("users")}
+        if "retention_days" not in columns:
+            with engine.begin() as conn:
+                conn.execute(text("ALTER TABLE users ADD COLUMN retention_days INTEGER DEFAULT 30"))
+
+    # 3. Update scans columns if table exists
+    if "scans" in existing_tables:
+        columns = {c["name"] for c in inspector.get_columns("scans")}
+        if "is_quarantined" not in columns:
+            with engine.begin() as conn:
+                conn.execute(text("ALTER TABLE scans ADD COLUMN is_quarantined BOOLEAN DEFAULT 0"))
+        if "quarantine_reason" not in columns:
+            with engine.begin() as conn:
+                conn.execute(text("ALTER TABLE scans ADD COLUMN quarantine_reason VARCHAR(255) DEFAULT ''"))
 
 def get_db():
     db = SessionLocal()

@@ -1,261 +1,282 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Lock, FileUp, Download, CheckCircle2, AlertTriangle, Eye, EyeOff, Copy, ShieldCheck } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import {
+  Lock,
+  Shield,
+  Download,
+  CheckCircle2,
+  FileUp,
+  Archive,
+  Info,
+  Key,
+} from 'lucide-react';
+import { ApiFn } from './App';
 
-interface EncryptResult {
-  id: number;
-  original_filename: string;
-  encrypted_filename: string;
-  original_sha256: string;
-  algorithm: string;
-  kdf: string;
-  file_size: number;
-  download_url: string;
-}
-
-interface Props {
+export default function Encrypt({
+  token,
+  api,
+  prefillFile,
+  onComplete,
+  onViewVault,
+  showToast,
+}: {
   token: string;
-  api: (p: string, t: string, o?: RequestInit) => Promise<any>;
-}
-
-export default function Encrypt({ token, api }: Props) {
-  const [file, setFile] = useState<File>();
+  api: ApiFn;
+  prefillFile?: File | null;
+  onComplete?: () => void;
+  onViewVault: () => void;
+  showToast: (msg: string, type?: 'info' | 'success' | 'error') => void;
+}) {
+  const [file, setFile] = useState<File | null>(prefillFile || null);
   const [password, setPassword] = useState('');
-  const [confirm, setConfirm] = useState('');
-  const [showPw, setShowPw] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
-  const [result, setResult] = useState<EncryptResult | null>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [saveToVault, setSaveToVault] = useState(true);
+  const [notes, setNotes] = useState('');
+  const [encrypting, setEncrypting] = useState(false);
+  const [result, setResult] = useState<any>(null);
 
-  // Reset when file changes
-  useEffect(() => { setResult(null); setError(''); }, [file]);
+  useEffect(() => {
+    if (prefillFile) setFile(prefillFile);
+  }, [prefillFile]);
 
-  // Password strength calculation
-  const getStrength = (pwd: string): { level: string; color: string; } => {
-    if (!pwd) return { level: 'None', color: '#666' };
-    let strength = 0;
-    if (pwd.length >= 10) strength++;
-    if (pwd.length >= 16) strength++;
-    if (/[a-z]/.test(pwd)) strength++;
-    if (/[A-Z]/.test(pwd)) strength++;
-    if (/[0-9]/.test(pwd)) strength++;
-    if (/[^a-zA-Z0-9]/.test(pwd)) strength++;
-    const levels = ['Very Weak', 'Weak', 'Fair', 'Good', 'Strong', 'Very Strong'];
-    const colors = ['#ff6b78', '#ff9a3d', '#fbbf24', '#fcd34d', '#86efac', '#22c55e'];
-    return { level: levels[Math.min(strength - 1, 5)], color: colors[Math.min(strength - 1, 5)] };
-  };
-  const pwStrength = getStrength(password);
+  const handleEncrypt = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!file) {
+      showToast('Please select a file to protect', 'error');
+      return;
+    }
+    if (password.length < 8) {
+      showToast('Password must be at least 8 characters', 'error');
+      return;
+    }
+    if (password !== confirmPassword) {
+      showToast('Passwords do not match', 'error');
+      return;
+    }
 
-  // Validation logic: only show mismatch error if user has entered confirmation password
-  const errors: string[] = [];
-  if (password && password.length < 10) {
-    errors.push('Password must be at least 10 characters');
-  }
-  if (confirm.length > 0 && password !== confirm) {
-    errors.push('Passwords do not match');
-  }
-
-  // Button enabled only when: file selected + password >= 10 chars + confirmation not empty + both match + not encrypting
-  const valid =
-    !!file &&
-    password.length >= 10 &&
-    confirm.length > 0 &&
-    password === confirm &&
-    !busy;
-
-  const handleEncrypt = async () => {
-    if (!file || !valid) return;
-    setBusy(true);
-    setError('');
+    setEncrypting(true);
     try {
-      const form = new FormData();
-      form.append('file', file);
-      form.append('password', password);
-      const res = await api('/encrypt', token, { method: 'POST', body: form });
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('password', password);
+      formData.append('save_to_vault', saveToVault ? 'true' : 'false');
+      formData.append('notes', notes);
+
+      const res = await api('/api/v1/files/protect', token, {
+        method: 'POST',
+        body: formData,
+      });
+
       setResult(res);
-      // Clear password from memory after successful encryption
-      setPassword('');
-      setConfirm('');
-      if (inputRef.current) inputRef.current.value = '';
-    } catch (e: any) {
-      setError(e.message || 'Encryption failed. Please try again.');
+      showToast('File protected with AES-256-GCM successfully.', 'success');
+      if (onComplete) onComplete();
+    } catch (err: any) {
+      showToast(err.message || 'Encryption failed', 'error');
     } finally {
-      setBusy(false);
+      setEncrypting(false);
     }
   };
 
   const handleDownload = async () => {
     if (!result) return;
-    try {
-      const r = await fetch((import.meta.env.VITE_API_URL || 'http://127.0.0.1:8001') + result.download_url, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!r.ok) throw new Error('Download failed');
-      const blob = await r.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = result.encrypted_filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
-    } catch (e: any) {
-      setError(e.message || 'Download failed. Please try again.');
-    }
+    const apiUrl = (import.meta as any).env?.VITE_API_URL || (import.meta as any).env?.VITE_API_BASE_URL || 'http://127.0.0.1:8000';
+    const r = await fetch(apiUrl + result.download_url, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const blob = await r.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = result.encrypted_filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
 
-  const handleReset = () => {
-    setFile(undefined);
-    setPassword('');
-    setConfirm('');
-    setResult(null);
-    setError('');
-    if (inputRef.current) inputRef.current.value = '';
-  };
-
-  // ── Success state ──────────────────────────────────────────────────
-  if (result) {
-    return (
-      <div className="encrypt-success">
-        <header>
-          <p className="eyebrow">ENCRYPTION COMPLETE</p>
-          <h1>✓ Encryption Successful</h1>
-        </header>
-        <div className="encrypt-result-card">
-          <div className="result-row"><b>File</b><span>{result.original_filename}</span></div>
-          <div className="result-row"><b>Encrypted format</b><span>.sguard</span></div>
-          <div className="result-row"><b>Algorithm</b><span>{result.algorithm}</span></div>
-          <div className="result-row"><b>Key derivation</b><span>{result.kdf}</span></div>
-          <div className="result-row"><b>File size</b><span>{(result.file_size / 1024).toFixed(1)} KB</span></div>
-          <div className="result-row">
-            <b>Original SHA-256</b>
-            <span className="sha-hash">
-              <code>{result.original_sha256}</code>
-              <button className="iconbtn" onClick={() => navigator.clipboard.writeText(result.original_sha256)}>
-                <Copy size={13} /> Copy
-              </button>
-            </span>
-          </div>
-          <div className="result-actions">
-            <button className="primary" onClick={handleDownload}>
-              <Download size={16} /> Download Encrypted File
-            </button>
-            <button className="ghost-btn" onClick={handleReset}>Encrypt another file</button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // ── Upload / encrypt form ──────────────────────────────────────────
   return (
-    <>
-      <header>
-        <p className="eyebrow">ENCRYPT FILE</p>
-        <h1>Encrypt a file</h1>
-        <p className="muted">Files are encrypted with AES-256-GCM. Only you hold the password.</p>
+    <div className="protect-page">
+      <header className="page-header">
+        <p className="eyebrow">CRYPTOGRAPHIC SECURITY</p>
+        <h1>Protect File</h1>
+        <p className="muted">
+          Encrypt files with AES-256-GCM and Argon2id key derivation into self-authenticating .sguard packages.
+        </p>
       </header>
 
-      {error && <div className="error"><AlertTriangle size={14} /> {error}</div>}
-
-      <div className="encrypt-form">
-        {/* File selector */}
-        <div className="enc-drop" onClick={() => inputRef.current?.click()}>
-          <input
-            ref={inputRef}
-            type="file"
-            className="file-input"
-            onChange={e => setFile(e.target.files?.[0])}
-          />
-          {file ? (
-            <div className="enc-file-info">
-              <FileUp size={28} />
-              <div>
-                <strong>{file.name}</strong>
-                <small>{(file.size / 1024).toFixed(1)} KB</small>
+      <div className="protect-layout">
+        {!result ? (
+          <form onSubmit={handleEncrypt} className="protect-form-card">
+            {/* Step 1: Select File */}
+            <div className="form-step">
+              <span className="step-badge">1</span>
+              <div className="step-content">
+                <h3>Select File</h3>
+                <div className="file-picker-wrap">
+                  <input
+                    type="file"
+                    id="protect-file-input"
+                    className="hidden-file-input"
+                    onChange={(e) => {
+                      if (e.target.files?.[0]) setFile(e.target.files[0]);
+                    }}
+                  />
+                  <label htmlFor="protect-file-input" className="file-picker-box">
+                    <FileUp size={24} className="picker-icon" />
+                    {file ? (
+                      <div>
+                        <strong>{file.name}</strong>
+                        <small className="muted block">{(file.size / 1024).toFixed(1)} KB</small>
+                      </div>
+                    ) : (
+                      <div>
+                        <span>Click to choose a file</span>
+                        <small className="muted block">Any file format up to 100 MB</small>
+                      </div>
+                    )}
+                  </label>
+                </div>
               </div>
             </div>
-          ) : (
-            <div className="enc-file-info">
-              <FileUp size={28} />
-              <div>
-                <strong>Choose a file to encrypt</strong>
-                <small>Any file type · up to 100 MB</small>
+
+            {/* Step 2: Set Passphrase */}
+            <div className="form-step">
+              <span className="step-badge">2</span>
+              <div className="step-content">
+                <h3>Set Encryption Passphrase</h3>
+                <div className="form-group">
+                  <label>Passphrase (min 8 characters)</label>
+                  <input
+                    type="password"
+                    required
+                    placeholder="Enter strong passphrase"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Confirm Passphrase</label>
+                  <input
+                    type="password"
+                    required
+                    placeholder="Repeat passphrase"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                  />
+                </div>
               </div>
             </div>
-          )}
-        </div>
 
-        {/* Password */}
-        <div className="pw-field">
-          <input
-            type={showPw ? 'text' : 'password'}
-            placeholder="Encryption password (10+ characters)"
-            value={password}
-            onChange={e => setPassword(e.target.value)}
-            minLength={10}
-            autoComplete="new-password"
-          />
-          <button type="button" className="pw-toggle" onClick={() => setShowPw(!showPw)}>
-            {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
-          </button>
-        </div>
+            {/* Step 3: Vault Storage Options */}
+            <div className="form-step">
+              <span className="step-badge">3</span>
+              <div className="step-content">
+                <h3>Storage & Vault Options</h3>
+                <label className="checkbox-label">
+                  <input
+                    type="checkbox"
+                    checked={saveToVault}
+                    onChange={(e) => setSaveToVault(e.target.checked)}
+                  />
+                  <span>Save encrypted file to my Secure Vault</span>
+                </label>
 
-        {/* Password Strength */}
-        {password && (
-          <div className="pw-strength">
-            <div className="strength-bar">
-              <div className="strength-fill" style={{
-                width: `${Math.min(password.length / 20 * 100, 100)}%`,
-                backgroundColor: pwStrength.color,
-                transition: 'all 0.3s ease'
-              }} />
+                {saveToVault && (
+                  <div className="form-group mt-2">
+                    <label>Vault Note (Optional)</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Confidential tax documents"
+                      value={notes}
+                      onChange={(e) => setNotes(e.target.value)}
+                    />
+                  </div>
+                )}
+              </div>
             </div>
-            <p className="strength-text" style={{ color: pwStrength.color }}>
-              Strength: <strong>{pwStrength.level}</strong>
+
+            <button
+              type="submit"
+              className="btn btn-primary btn-lg btn-block"
+              disabled={encrypting || !file || !password}
+            >
+              <Lock size={18} />
+              <span>{encrypting ? 'Encrypting with AES-256-GCM...' : 'Encrypt & Protect File'}</span>
+            </button>
+          </form>
+        ) : (
+          <div className="protect-success-card">
+            <CheckCircle2 size={48} className="text-ok" />
+            <h2>File Protected Successfully</h2>
+            <p className="muted">
+              The file is encrypted with AES-256-GCM. An authenticated .sguard package has been created.
+            </p>
+
+            <div className="detail-box">
+              <div className="detail-row">
+                <span className="muted">Original:</span>
+                <strong>{result.original_filename}</strong>
+              </div>
+              <div className="detail-row">
+                <span className="muted">Protected Package:</span>
+                <code>{result.encrypted_filename}</code>
+              </div>
+              <div className="detail-row">
+                <span className="muted">SHA-256 Hash:</span>
+                <code>{result.original_sha256}</code>
+              </div>
+              <div className="detail-row">
+                <span className="muted">Cipher:</span>
+                <span>{result.algorithm} ({result.kdf})</span>
+              </div>
+            </div>
+
+            <div className="success-actions">
+              <button className="btn btn-primary" onClick={handleDownload}>
+                <Download size={16} /> Download .sguard Package
+              </button>
+              {result.vault_file_id && (
+                <button className="btn btn-outline" onClick={onViewVault}>
+                  <Archive size={16} /> View in Secure Vault
+                </button>
+              )}
+              <button
+                className="btn btn-ghost"
+                onClick={() => {
+                  setResult(null);
+                  setFile(null);
+                  setPassword('');
+                  setConfirmPassword('');
+                }}
+              >
+                Protect Another File
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Informational Sidebar */}
+        <aside className="protect-info-aside">
+          <div className="info-card">
+            <div className="info-card-head">
+              <Shield size={18} className="text-accent" />
+              <strong>Cryptographic Disclaimer</strong>
+            </div>
+            <p className="muted">
+              Encryption protects the confidentiality and integrity of the encrypted file. It does not make an unsafe file safe.
             </p>
           </div>
-        )}
 
-        {/* Confirm password */}
-        <div className="pw-field">
-          <input
-            type={showPw ? 'text' : 'password'}
-            placeholder="Confirm password"
-            value={confirm}
-            onChange={e => setConfirm(e.target.value)}
-            autoComplete="new-password"
-          />
-          {confirm && password === confirm && (
-            <div style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', color: '#22c55e', fontSize: '12px' }}>
-              ✓ Passwords match
+          <div className="info-card">
+            <div className="info-card-head">
+              <Key size={18} className="text-accent" />
+              <strong>Zero-Knowledge Password</strong>
             </div>
-          )}
-        </div>
-
-        {/* Validation messages */}
-        {errors.length > 0 && (
-          <div className="enc-errors">
-            {errors.map((e, i) => <p key={i}><AlertTriangle size={13} /> {e}</p>)}
+            <p className="muted">
+              SentinelGuard never stores your encryption passwords. If you lose your passphrase, the ciphertext cannot be recovered.
+            </p>
           </div>
-        )}
-
-        {/* Encrypt button */}
-        <button
-          className="primary"
-          disabled={!valid || busy}
-          onClick={handleEncrypt}
-        >
-          <Lock size={16} />
-          {busy ? 'Encrypting…' : 'Encrypt file'}
-        </button>
-
-        <p className="muted" style={{ fontSize: 12, textAlign: 'center', marginTop: 12 }}>
-          <ShieldCheck size={13} style={{ verticalAlign: -2, marginRight: 4 }} />
-          Password is never stored. Lost passwords cannot be recovered.
-        </p>
+        </aside>
       </div>
-    </>
+    </div>
   );
 }
