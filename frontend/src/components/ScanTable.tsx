@@ -1,11 +1,13 @@
 import React,{useState} from 'react';
+import {ScanLine} from 'lucide-react';
 import {Scan} from './App';
+import {EmptyState} from './VaultPage';
 
-export default function ScanTable({scans,open,onDelete}:{scans:Scan[];open:(s:Scan)=>void;onDelete?:(id:number)=>Promise<void>}){
+export default function ScanTable({scans,open,onDelete,emptyBody="Files you analyze will appear here with their risk score and findings. Start with Analyze file in the sidebar."}:{scans:Scan[];open:(s:Scan)=>void;onDelete?:(id:number)=>Promise<void>;emptyBody?:string}){
   const [pending,setPending]=useState<Scan>();
   const [error,setError]=useState('');
   const [busy,setBusy]=useState(false);
-  if(!scans.length)return <div className="empty">No scan history yet.<br/><small>Files you analyze will appear here.</small></div>;
+  if(!scans.length)return <EmptyState icon={<ScanLine size={30}/>} title="No scans yet" body={emptyBody}/>;
   const remove=async()=>{
     if(!pending||!onDelete)return;
     setBusy(true);setError('');

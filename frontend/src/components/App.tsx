@@ -49,13 +49,13 @@ export default function App({ token, signout, api }: { token: string; signout: (
       <aside>
         <div className="brand"><ShieldCheck /> SentinelGuard</div>
         <nav>
+          <span className="nav-label">Security</span>
           <button className={tab === 'dashboard' ? 'active' : ''} onClick={() => setTab('dashboard')}><Activity /> Dashboard</button>
           <button className={tab === 'upload' ? 'active' : ''} onClick={() => setTab('upload')}><FileUp /> Analyze file</button>
           <button className={tab === 'history' ? 'active' : ''} onClick={() => setTab('history')}><History /> History</button>
-          <div className="nav-divider" />
+          <span className="nav-label">Protection</span>
           <button className={tab === 'vault' ? 'active' : ''} onClick={() => setTab('vault')}><Vault /> Secure Vault</button>
           <button className={tab === 'quarantine' ? 'active' : ''} onClick={() => setTab('quarantine')}><ShieldAlert /> Quarantine</button>
-          <div className="nav-divider" />
           <button className={tab === 'encrypt' ? 'active' : ''} onClick={() => setTab('encrypt')}><Lock /> Encrypt file</button>
           <button className={tab === 'decrypt' ? 'active' : ''} onClick={() => setTab('decrypt')}><Unlock /> Decrypt file</button>
           <button className={tab === 'encrypt-history' ? 'active' : ''} onClick={() => setTab('encrypt-history')}><Key /> Encryption history</button>
@@ -67,7 +67,7 @@ export default function App({ token, signout, api }: { token: string; signout: (
       </aside>
       <main className="content">
         {error && <p className="error toast">{error}</p>}
-        {tab === 'dashboard' && <Dashboard data={data} open={setScan} onDelete={deleteScan} />}
+        {tab === 'dashboard' && <Dashboard data={data} open={setScan} onDelete={deleteScan} onNavigate={setTab} />}
         {tab === 'upload' && <Upload onStart={f => { setPendingFile(f); setTab('dashboard'); }} />}
         {tab === 'history' && <HistoryPage token={token} open={setScan} onAuthFailure={signout} />}
         {tab === 'encrypt' && <Encrypt token={token} api={api} />}

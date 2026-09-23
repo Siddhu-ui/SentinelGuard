@@ -1,5 +1,6 @@
 import React,{useCallback,useEffect,useState} from 'react';
-import {ShieldAlert,Trash2,Undo2,AlertTriangle} from 'lucide-react';
+import {ShieldAlert,Trash2,Undo2,AlertTriangle,ShieldX} from 'lucide-react';
+import {EmptyState} from './VaultPage';
 
 type QuarantineItem={
   id:number; scan_id:number; filename:string; risk_score:number;
@@ -66,7 +67,7 @@ export default function QuarantinePage({token,api}:Props){
       {loading
         ?<p className="muted">Loading quarantine…</p>
         :items.length===0
-          ?<div className="empty">Quarantine is empty.<br/><small>Use “Quarantine” on a scan result to isolate a suspicious file.</small></div>
+          ?<EmptyState icon={<ShieldX size={30}/>} title="Quarantine is empty" body="Nothing is isolated right now. Use “Quarantine this file” on a scan result to move a suspicious file here."/>
           :<div className="table">
             {items.map(q=>(
               <div className="row quarantine-row" key={q.id}>

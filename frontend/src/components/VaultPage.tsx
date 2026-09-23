@@ -1,5 +1,5 @@
 import React,{useCallback,useEffect,useRef,useState} from 'react';
-import {Lock,LockOpen,FileUp,Download,Trash2,ShieldCheck,AlertTriangle,Unlock,FolderLock} from 'lucide-react';
+import {Lock,LockOpen,FileUp,Download,Trash2,ShieldCheck,Unlock,FolderLock,FileLock2,KeyRound,Vault as VaultIcon} from 'lucide-react';
 
 type VaultItem={
   id:number; original_filename:string; file_size:number; sha256:string;
@@ -31,6 +31,17 @@ function formatSize(bytes:number){
   if(bytes<1024)return bytes+' B';
   if(bytes<1024*1024)return (bytes/1024).toFixed(1)+' KB';
   return (bytes/(1024*1024)).toFixed(2)+' MB';
+}
+
+/* Consistent icon+heading empty state used across the app */
+export function EmptyState({icon,title,body}:{icon:React.ReactNode;title:string;body:string}){
+  return (
+    <div className="empty-state">
+      <span className="empty-icon">{icon}</span>
+      <b>{title}</b>
+      <small>{body}</small>
+    </div>
+  );
 }
 
 export default function VaultPage({token,api}:Props){
@@ -162,58 +173,65 @@ export default function VaultPage({token,api}:Props){
     }
   };
 
-  if(phase==='loading')return <header><h1>Secure Vault</h1><p className="muted">Checking Vault status…</p></header>;
+  const totalSize=items.reduce((n,it)=>n+it.file_size,0);
+
+  if(phase==='loading')return (
+    <main className="feature-page">
+      <VaultHeader locked items={0}/>
+      <p className="muted">Checking Vault status…</p>
+    </main>
+  );
 
   /* ── First-time setup ── */
   if(phase==='setup')return (
     <main className="feature-page">
-      <header>
-        <p className="eyebrow">SECURE VAULT</p>
-        <h1>Create your Vault</h1>
-        <p className="muted">Choose a separate Vault password. It protects stored files with AES-256-GCM and is never stored in plain text — if you lose it, the files cannot be recovered.</p>
-      </header>
-      <form className="auth-card vault-card" onSubmit={submitSetup}>
-        <label>Vault password</label>
-        <div className="pw-row">
-          <input type={showPw?'text':'password'} value={password} onChange={e=>setPassword(e.target.value)} placeholder="8+ characters, letters and numbers" autoComplete="new-password" required/>
-          <button type="button" className="iconbtn" onClick={()=>setShowPw(s=>!s)}>{showPw?'Hide':'Show'}</button>
-        </div>
-        <label>Confirm Vault password</label>
-        <input type={showPw?'text':'password'} value={confirm} onChange={e=>setConfirm(e.target.value)} autoComplete="new-password" required/>
-        {error&&<p className="error">{error}</p>}
-        <button className="primary" disabled={busy||!password||!confirm}><FolderLock size={16}/> {busy?'Creating…':'Create Vault'}</button>
-      </form>
+      <VaultHeader locked items={0} title="Set up your Vault" subtitle="One-time setup: choose a Vault password to create your encrypted storage."/>
+      <div className="vault-gate">
+        <span className="vault-gate-icon"><FolderLock size={30}/></span>
+        <b>Create your Vault</b>
+        <p>Choose a separate Vault password. Files stored here are protected with AES-256-GCM. The password is never stored — if you lose it, the files cannot be recovered.</p>
+        <form onSubmit={submitSetup}>
+          <label>Vault password</label>
+          <div className="pw-row">
+            <input type={showPw?'text':'password'} value={password} onChange={e=>setPassword(e.target.value)} placeholder="8+ characters, letters and numbers" autoComplete="new-password" required/>
+            <button type="button" className="iconbtn" onClick={()=>setShowPw(s=>!s)}>{showPw?'Hide':'Show'}</button>
+          </div>
+          <label>Confirm Vault password</label>
+          <input type={showPw?'text':'password'} value={confirm} onChange={e=>setConfirm(e.target.value)} autoComplete="new-password" required/>
+          {error&&<p className="error">{error}</p>}
+          <button className="primary" disabled={busy||!password||!confirm}><FolderLock size={16}/> {busy?'Creating…':'Create Vault'}</button>
+        </form>
+      </div>
+      <p className="vault-note muted"><KeyRound size={14}/> The Vault password is separate from your sign-in password and is never stored anywhere.</p>
     </main>
   );
 
   /* ── Locked ── */
   if(phase==='locked')return (
     <main className="feature-page">
-      <header>
-        <p className="eyebrow">SECURE VAULT</p>
-        <h1>Vault is locked</h1>
-        <p className="muted">Enter your Vault password to unlock. Protected files stay encrypted and invisible until you do.</p>
-      </header>
-      <form className="auth-card vault-card" onSubmit={submitUnlock}>
-        <label>Vault password</label>
-        <div className="pw-row">
-          <input type={showPw?'text':'password'} value={password} onChange={e=>setPassword(e.target.value)} autoComplete="current-password" required/>
-          <button type="button" className="iconbtn" onClick={()=>setShowPw(s=>!s)}>{showPw?'Hide':'Show'}</button>
-        </div>
-        {error&&<p className="error">{error}</p>}
-        <button className="primary" disabled={busy||!password}><Unlock size={16}/> {busy?'Verifying…':'Unlock Vault'}</button>
-      </form>
+      <VaultHeader locked items={0} title="Vault is locked" subtitle="Enter your Vault password to access protected files."/>
+      <div className="vault-gate">
+        <span className="vault-gate-icon locked"><Lock size={30}/></span>
+        <b>Vault is locked</b>
+        <p>Protected files stay encrypted and invisible until you unlock. Enter your Vault password to continue.</p>
+        <form onSubmit={submitUnlock}>
+          <label>Vault password</label>
+          <div className="pw-row">
+            <input type={showPw?'text':'password'} value={password} onChange={e=>setPassword(e.target.value)} autoComplete="current-password" required/>
+            <button type="button" className="iconbtn" onClick={()=>setShowPw(s=>!s)}>{showPw?'Hide':'Show'}</button>
+          </div>
+          {error&&<p className="error">{error}</p>}
+          <button className="primary" disabled={busy||!password}><Unlock size={16}/> {busy?'Verifying…':'Unlock Vault'}</button>
+        </form>
+      </div>
+      <p className="vault-note muted"><ShieldCheck size={14}/> While locked, no file contents can be accessed — even by SentinelGuard.</p>
     </main>
   );
 
   /* ── Unlocked ── */
   return (
     <main className="feature-page">
-      <header>
-        <p className="eyebrow">SECURE VAULT</p>
-        <h1>Secure Vault</h1>
-        <p className="muted">Files here are encrypted with AES-256-GCM under your Vault password. The Vault re-locks automatically when the session expires.</p>
-      </header>
+      <VaultHeader locked={false} items={items.length} onLock={lock} totalSize={totalSize}/>
       {message&&<p className="success-msg">{message}</p>}
       {error&&<p className="error">{error}</p>}
 
@@ -223,29 +241,48 @@ export default function VaultPage({token,api}:Props){
           <button className="ghost" onClick={pick} disabled={busy}><FileUp size={15}/> {file?file.name:'Choose file to protect'}</button>
           <button className="primary vault-add-btn" onClick={addItem} disabled={busy||!file}><Lock size={15}/> {busy?'Encrypting…':'Protect & store'}</button>
         </div>
-        <button className="ghost danger-ghost" onClick={lock}><LockOpen size={15} style={{transform:'rotate(180deg)'}}/> Lock Vault now</button>
       </div>
 
       {items.length===0
-        ?<div className="empty">Vault is empty.<br/><small>Protected files you add will appear here.</small></div>
-        :<div className="table">
+        ?<EmptyState icon={<FileLock2 size={30}/>} title="Vault is empty" body="Choose a file above and protect it — it will be encrypted with AES-256-GCM before it touches storage."/>
+        :<div className="table vault-table">
           {items.map(it=>(
-            <div className="row" key={it.id}>
+            <div className="row vault-row" key={it.id}>
               <span>
                 <button className="row-main" onClick={()=>download(it)} title="Decrypt & download">
                   <b>{it.original_filename}</b>
-                  <small>{it.algorithm} · {it.kdf} · {formatSize(it.file_size)}</small>
+                  <small>{it.algorithm} · {it.kdf}</small>
                 </button>
               </span>
+              <small>{formatSize(it.file_size)}</small>
+              <small>{new Date(it.created_at).toLocaleDateString()}</small>
               <span className={'badge safe'}>Protected</span>
-              <small>{new Date(it.created_at).toLocaleString()}</small>
-              <button className="delete-scan" onClick={()=>download(it)} aria-label={`Download ${it.original_filename}`}><Download size={15}/></button>
-              <button className="delete-scan" onClick={()=>remove(it)} aria-label={`Delete ${it.original_filename}`}><Trash2 size={15}/></button>
+              <span className="row-actions">
+                <button className="delete-scan" onClick={()=>download(it)} aria-label={`Download ${it.original_filename}`} title="Decrypt & download"><Download size={15}/></button>
+                <button className="delete-scan" onClick={()=>remove(it)} aria-label={`Delete ${it.original_filename}`} title="Permanently delete"><Trash2 size={15}/></button>
+              </span>
             </div>
           ))}
         </div>}
-      <p className="vault-note muted"><ShieldCheck size={14}/> The Vault password never leaves your session unencrypted and is never stored. Files are decrypted only while the Vault is unlocked.</p>
-      {false&&<AlertTriangle/>}
+      <p className="vault-note muted"><ShieldCheck size={14}/> Files are decrypted only while the Vault is unlocked and only in your browser session.</p>
     </main>
+  );
+}
+
+function VaultHeader({locked,items,onLock,totalSize,title,subtitle}:{locked:boolean;items:number;onLock?:()=>void;totalSize?:number;title?:string;subtitle?:string}){
+  return (
+    <div className="page-head">
+      <span className={'page-head-icon '+(locked?'locked':'')}><VaultIcon size={26}/></span>
+      <div className="page-head-copy">
+        <p className="eyebrow">SECURE VAULT</p>
+        <h1>{title??(locked?'Vault is locked':'Secure Vault')}</h1>
+        <p className="muted">
+          {subtitle??(locked
+            ?'Enter your Vault password to access protected files.'
+            :`${items} protected file${items===1?'':'s'}${totalSize?` · ${formatSize(totalSize)} protected`:''} — encrypted with AES-256-GCM under your Vault password.`)}
+        </p>
+      </div>
+      {!locked&&onLock&&<button className="ghost lock-btn" onClick={onLock}><LockOpen size={15} style={{transform:'rotate(180deg)'}}/> Lock Vault</button>}
+    </div>
   );
 }

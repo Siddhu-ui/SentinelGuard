@@ -30,7 +30,7 @@ export default function HistoryPage({token,open,onAuthFailure}:{token:string;ope
         <Search size={16}/>
         <input className="search" placeholder="Search filename…" value={q} onChange={e=>setQ(e.target.value)}/>
       </div>
-      <ScanTable scans={scans} open={open} onDelete={deleteScan}/>
+      <ScanTable scans={scans} open={open} onDelete={deleteScan} emptyBody="Search your full scan history — every analysis is kept here until you remove it."/>
       {clearOpen&&<div className="confirm-backdrop"><section className="confirm-modal"><h2>Clear scan history?</h2><p>This will permanently remove all of your scan records from SentinelGuard history.</p><p className="muted">Encryption and decryption history will not be affected.</p><div className="confirm-actions"><button className="ghost" onClick={()=>setClearOpen(false)} disabled={busy}>Cancel</button><button className="danger-btn" onClick={clearAll} disabled={busy}>{busy?'Clearing…':'Clear history'}</button></div></section></div>}
     </>
   );
