@@ -100,16 +100,18 @@ flyctl tokens create deploy            # copy the output
 
 ---
 
-## Option B — Render (no CLI, fully dashboard-driven)
+## Option B — Render (current production backend: sentinelguard-mvcb)
+
+The backend runs on Render at `https://sentinelguard-mvcb.onrender.com`.
 
 1. Push this branch to GitHub (already done: `secure-Quarantine`).
-2. Render dashboard → **New → Blueprint**, point it at the repo/branch — or
-   **New → Web Service** with these settings:
-   - **Environment:** Docker
+2. Render dashboard → **New → Web Service** with these settings:
+   - **Repository:** `Siddhu-ui/SentinelGuard`, **Branch:** `secure-Quarantine`
+   - **Environment:** Docker (uses the repo `Dockerfile`)
    - **Region:** closest to you
    - **Instance type:** Free (fine for testing) or Starter
    - **Disk** (Starter+): mount 3 GB at `/data`
-3. Set environment variables in the Render dashboard:
+3. Environment variables in the Render dashboard:
 
    | Key | Value |
    |---|---|
@@ -117,10 +119,14 @@ flyctl tokens create deploy            # copy the output
    | `DATABASE_URL` | `sqlite:////data/sentinelguard.db` |
    | `UPLOAD_DIR` | `/data/uploads` |
    | `PORT` | `10000` (Render sets this; the app reads it) |
-   | `CORS_ORIGINS` | `https://<your-service>.onrender.com` |
+   | `CORS_ORIGINS` | `https://sentinelguard007.netlify.app` |
    | `MAX_UPLOAD_MB` | `100` |
 
-4. Health check path: `/health`. Deploy.
+   > `CORS_ORIGINS` is belt-and-braces: since commit `a7bd1cd` the backend
+   > always allows `https://sentinelguard007.netlify.app` and its own origin
+   > even if this variable is unset. Localhost dev origins stay allowed.
+4. Health check path: `/health`. Auto-deploy: On (deploys every push to
+   `secure-Quarantine`). Manual trigger: **Manual Deploy → Deploy latest commit**.
 
 > Render's free tier has **no persistent disk** — database and files reset on
 > redeploy. Use Starter (or Fly.io) for real persistence.
