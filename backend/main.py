@@ -26,7 +26,7 @@ from database import migrate_legacy_schema
 migrate_legacy_schema()
 settings.upload_path.mkdir(parents=True, exist_ok=True); settings.upload_path.joinpath("protected").mkdir(parents=True, exist_ok=True)
 app=FastAPI(title="SentinelGuard API", version="1.0.0", description="Static pre-analysis of suspicious files. Files are never executed.")
-app.add_middleware(CORSMiddleware, allow_origins=[x.strip() for x in settings.cors_origins.split(",")], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
+app.add_middleware(CORSMiddleware, allow_origins=settings.cors_origin_list, allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
 def scan_out(s: Scan) -> dict:
     d=json.loads(s.details_json)

@@ -19,4 +19,16 @@ class Settings(BaseSettings):
     def upload_path(self) -> Path:
         return Path(self.upload_dir).resolve()
 
+    @property
+    def cors_origin_list(self) -> list[str]:
+        """Allowed CORS origins: the CORS_ORIGINS env value (comma-separated)
+        plus the production origins that must always be allowed, so a missing
+        or stale env var can never break the deployed frontend preflight."""
+        required = (
+            "https://sentinelguard007.netlify.app",   # production frontend
+            "https://sentinelguard-mvcb.onrender.com",  # backend's own origin
+        )
+        configured = [x.strip() for x in self.cors_origins.split(",") if x.strip()]
+        return list(dict.fromkeys(configured + list(required)))
+
 settings = Settings()
