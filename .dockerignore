@@ -1,0 +1,14 @@
+.git
+.freebuff
+.kilo
+**/__pycache__
+**/*.pyc
+backend/.pytest_tmp
+backend/uvicorn.log
+backend/sentinelguard.db
+backend/uploads
+frontend/node_modules
+frontend/dist
+frontend/vite.log
+*.log
+.env

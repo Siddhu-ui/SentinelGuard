@@ -552,3 +552,18 @@ async def download_decrypted(
         media_type="application/octet-stream",
         headers={"Content-Disposition": f'attachment; filename="{safe_filename}"'},
     )
+
+
+# --- Optional single-service static hosting --------------------------------
+# When a built frontend exists at ../frontend/dist (e.g. inside the production
+# container), serve it from this same origin so the app deploys as ONE service
+# with no CORS setup and a single public URL. Local dev keeps using the Vite
+# dev server on :5173. Must be registered AFTER all API routes above.
+_frontend_dist = Path(__file__).resolve().parent.parent / "frontend" / "dist"
+if _frontend_dist.is_dir():
+    try:
+        from fastapi.staticfiles import StaticFiles
+
+        app.mount("/", StaticFiles(directory=_frontend_dist, html=True), name="frontend")
+    except Exception:  # never let static hosting break the API
+        pass

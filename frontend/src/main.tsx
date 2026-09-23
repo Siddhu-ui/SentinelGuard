@@ -5,8 +5,9 @@ import App from './components/App';
 import Landing from './components/Landing';
 import './style.css';
 
-// Use the verified backend instance that runs from the repository source tree.
-const API=import.meta.env.VITE_API_URL||'http://127.0.0.1:8001';
+// API base: VITE_API_URL wins; in dev fall back to the local backend, in a
+// production build default to same-origin (backend serves the built frontend).
+const API=import.meta.env.VITE_API_URL||(import.meta.env.DEV?'http://127.0.0.1:8001':'');
 
 export async function api(path:string, token:string, opts:RequestInit={}){
   const r=await fetch(API+path,{...opts,headers:{Authorization:`Bearer ${token}`,...(opts.headers||{})}});

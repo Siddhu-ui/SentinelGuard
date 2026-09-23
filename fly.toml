@@ -1,0 +1,41 @@
+# fly.toml — SentinelGuard single-service deployment.
+# One app serves the API and the built frontend on one origin (no CORS setup),
+# with a persistent volume holding the SQLite database, uploads, Secure Vault
+# and Quarantine files under /data.
+app = "sentinelguard"
+primary_region = "iad"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  PORT = "8080"
+  UPLOAD_DIR = "/data/uploads"
+  DATABASE_URL = "sqlite:////data/sentinelguard.db"
+  # SECRET_KEY and CORS_ORIGINS are set via `fly secrets set` (never commit them)
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+
+  [http_service.concurrency]
+    type = "requests"
+
+  [[http_service.checks]]
+    interval = "15s"
+    timeout = "5s"
+    grace_period = "30s"
+    method = "get"
+    path = "/health"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "1gb"
+
+[mounts]
+  source = "sentinelguard_data"
+  destination = "/data"
+  initial_size = "3gb"
