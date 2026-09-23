@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Activity, FileUp, History, LogOut, ShieldCheck, Lock, Unlock, Key } from 'lucide-react';
+import { Activity, FileUp, History, LogOut, ShieldCheck, Lock, Unlock, Key, ShieldAlert, Vault } from 'lucide-react';
 import Dashboard from './Dashboard';
 import Upload from './Upload';
 import HistoryPage from './History';
@@ -8,15 +8,19 @@ import VirtualScan from './VirtualScan';
 import Encrypt from './Encrypt';
 import Decrypt from './Decrypt';
 import EncryptHistory from './EncryptHistory';
+import VaultPage from './VaultPage';
+import QuarantinePage from './QuarantinePage';
 
 export type Scan = {
   id: number; filename: string; sha256: string; mime_type: string; size: number;
-  entropy: number; risk_score: number; risk_level: string; details: any; threats: any[]; created_at: string;
+  entropy: number; risk_score: number; risk_level: string;
+  analysis_status?: 'completed' | 'failed' | string; analysis_error?: string | null;
+  details: any; threats: any[]; created_at: string;
 };
 
 export type ApiFn = (p: string, t: string, o?: RequestInit) => Promise<any>;
 
-type Tab = 'dashboard' | 'upload' | 'history' | 'encrypt' | 'decrypt' | 'encrypt-history';
+type Tab = 'dashboard' | 'upload' | 'history' | 'encrypt' | 'decrypt' | 'encrypt-history' | 'vault' | 'quarantine';
 
 export default function App({ token, signout, api }: { token: string; signout: () => void; api: ApiFn }) {
   const [tab, setTab] = useState<Tab>('dashboard');
@@ -27,14 +31,16 @@ export default function App({ token, signout, api }: { token: string; signout: (
 
   const load = async () => {
     try {
-      const r = await fetch((import.meta.env.VITE_API_URL || 'http://localhost:8000') + '/dashboard', {
+      const r = await fetch((import.meta.env.VITE_API_URL || 'http://127.0.0.1:8001') + '/dashboard', {
         headers: { Authorization: `Bearer ${token}` },
       });
       const j = await r.json();
+      if (r.status === 401) { signout(); return; }
       if (!r.ok) throw new Error(j.detail);
       setData(j);
     } catch (e: any) { setError(e.message); }
   };
+  const deleteScan=async(id:number)=>{const r=await fetch((import.meta.env.VITE_API_URL||'http://127.0.0.1:8001')+'/scans/'+id,{method:'DELETE',headers:{Authorization:`Bearer ${token}`}});if(r.status===401){signout();throw new Error('Your session has expired. Please sign in again.')}if(!r.ok)throw new Error('Unable to delete scan. Please try again.');await load();};
 
   useEffect(() => { load(); }, []);
 
@@ -43,10 +49,13 @@ export default function App({ token, signout, api }: { token: string; signout: (
       <aside>
         <div className="brand"><ShieldCheck /> SentinelGuard</div>
         <nav>
+          <span className="nav-label">Security</span>
           <button className={tab === 'dashboard' ? 'active' : ''} onClick={() => setTab('dashboard')}><Activity /> Dashboard</button>
           <button className={tab === 'upload' ? 'active' : ''} onClick={() => setTab('upload')}><FileUp /> Analyze file</button>
           <button className={tab === 'history' ? 'active' : ''} onClick={() => setTab('history')}><History /> History</button>
-          <div className="nav-divider" />
+          <span className="nav-label">Protection</span>
+          <button className={tab === 'vault' ? 'active' : ''} onClick={() => setTab('vault')}><Vault /> Secure Vault</button>
+          <button className={tab === 'quarantine' ? 'active' : ''} onClick={() => setTab('quarantine')}><ShieldAlert /> Quarantine</button>
           <button className={tab === 'encrypt' ? 'active' : ''} onClick={() => setTab('encrypt')}><Lock /> Encrypt file</button>
           <button className={tab === 'decrypt' ? 'active' : ''} onClick={() => setTab('decrypt')}><Unlock /> Decrypt file</button>
           <button className={tab === 'encrypt-history' ? 'active' : ''} onClick={() => setTab('encrypt-history')}><Key /> Encryption history</button>
@@ -58,19 +67,25 @@ export default function App({ token, signout, api }: { token: string; signout: (
       </aside>
       <main className="content">
         {error && <p className="error toast">{error}</p>}
-        {tab === 'dashboard' && <Dashboard data={data} open={setScan} />}
+        {tab === 'dashboard' && <Dashboard data={data} open={setScan} onDelete={deleteScan} onNavigate={setTab} />}
         {tab === 'upload' && <Upload onStart={f => { setPendingFile(f); setTab('dashboard'); }} />}
-        {tab === 'history' && <HistoryPage token={token} open={setScan} />}
+        {tab === 'history' && <HistoryPage token={token} open={setScan} onAuthFailure={signout} />}
         {tab === 'encrypt' && <Encrypt token={token} api={api} />}
         {tab === 'decrypt' && <Decrypt token={token} api={api} />}
         {tab === 'encrypt-history' && <EncryptHistory token={token} api={api} />}
-        {scan && <Result scan={scan} token={token} close={() => setScan(undefined)} />}
+        {tab === 'vault' && <VaultPage token={token} api={api} />}
+        {tab === 'quarantine' && <QuarantinePage token={token} api={api} />}
+        {scan && <Result scan={scan} token={token} close={() => setScan(undefined)} onQuarantine={async () => {
+          if (!scan) return;
+          await api('/quarantine', token, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ scan_id: scan.id }) });
+        }} />}
         {pendingFile && (
           <VirtualScan
             file={pendingFile}
             token={token}
             onDone={s => { setScan(s); setPendingFile(undefined); load(); }}
             onCancel={() => setPendingFile(undefined)}
+            onAuthFailure={signout}
           />
         )}
       </main>

@@ -7,11 +7,28 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 60
     database_url: str = "sqlite:///./sentinelguard.db"
     upload_dir: str = "./uploads"
-    cors_origins: str = "http://localhost:5173"
+    cors_origins: str = ",".join([
+        "http://localhost:5173",
+        "http://localhost:5174",
+        "http://127.0.0.1:5173",
+        "http://127.0.0.1:5174",
+    ])
     max_upload_mb: int = 100
 
     @property
     def upload_path(self) -> Path:
         return Path(self.upload_dir).resolve()
+
+    @property
+    def cors_origin_list(self) -> list[str]:
+        """Allowed CORS origins: the CORS_ORIGINS env value (comma-separated)
+        plus the production origins that must always be allowed, so a missing
+        or stale env var can never break the deployed frontend preflight."""
+        required = (
+            "https://sentinelguard007.netlify.app",   # production frontend
+            "https://sentinelguard-mvcb.onrender.com",  # backend's own origin
+        )
+        configured = [x.strip() for x in self.cors_origins.split(",") if x.strip()]
+        return list(dict.fromkeys(configured + list(required)))
 
 settings = Settings()

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { History, AlertTriangle } from 'lucide-react';
+import { History, AlertTriangle, KeyRound } from 'lucide-react';
+import { EmptyState } from './VaultPage';
 
 interface EncryptRecord {
   id: number;
@@ -37,10 +38,11 @@ export default function EncryptHistory({ token, api }: Props) {
 
       <div className="table">
         {records.length === 0 ? (
-          <div className="empty">
-            <History size={28} style={{ marginBottom: 10, opacity: 0.4 }} />
-            <p>No encrypted files yet.</p>
-          </div>
+          <EmptyState
+            icon={<KeyRound size={30}/>}
+            title="No encrypted files yet"
+            body="Use Encrypt file to protect a document — every encryption is recorded here."
+          />
         ) : (
           records.map(r => (
             <div className="row" key={r.id} style={{ cursor: 'default' }}>
