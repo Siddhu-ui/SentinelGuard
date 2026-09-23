@@ -32,7 +32,7 @@ From the repository root:
 # Generate a strong JWT secret first; you will paste it below
 python -c "import secrets; print(secrets.token_hex(32))"
 
-flyctl apps create sentinelguard          # skip if the name is taken; flyctl suggests one
+flyctl apps create sentinelguard-siddhu   # skip if the name is taken; flyctl suggests one
 flyctl secrets set SECRET_KEY=<paste-the-hex-above>
 flyctl volumes create sentinelguard_data --size 3 --region iad
 flyctl deploy

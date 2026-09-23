@@ -9,16 +9,42 @@ concurrency:
   group: deploy-flyio
   cancel-in-progress: false
 
+env:
+  FLY_APP: sentinelguard-siddhu
+  FLY_REGION: iad
+  FLY_VOLUME: sentinelguard_data
+
 jobs:
   deploy:
-    name: Build and deploy
+    name: Bootstrap and deploy
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
 
       - uses: superfly/flyctl-actions/setup-flyctl@master
 
+      - name: Ensure Fly app exists
+        run: flyctl status --app "$FLY_APP" || flyctl apps create "$FLY_APP"
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+      - name: Ensure persistent volume exists
+        run: |
+          if ! flyctl volumes list --app "$FLY_APP" --json | grep -q "$FLY_VOLUME"; then
+            flyctl volumes create "$FLY_VOLUME" --size 3 --region "$FLY_REGION" --app "$FLY_APP" --yes
+          fi
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+      - name: Ensure SECRET_KEY is set (generated once, never printed)
+        run: |
+          flyctl secrets list --app "$FLY_APP" | grep -q SECRET_KEY \
+            || flyctl secrets set SECRET_KEY="$(openssl rand -hex 32)" --app "$FLY_APP"
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
       - name: Deploy
-        run: flyctl deploy --remote-only --wait-timeout 300
+        run: flyctl deploy --remote-only --config fly.toml --wait-timeout 300
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
