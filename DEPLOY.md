@@ -28,15 +28,25 @@ flyctl auth signup    # or: flyctl auth login
 
 From the repository root:
 
-```bash
+> **One-time note:** the GitHub Actions `FLY_API_TOKEN` should be created with
+> `flyctl tokens create deploy` — it can push to an existing app but **cannot
+> create apps, volumes or secrets**. The workflow therefore expects a one-time
+> local bootstrap (below); after that it deploys on every push.
+
+```powershell
 # Generate a strong JWT secret first; you will paste it below
 python -c "import secrets; print(secrets.token_hex(32))"
 
-flyctl apps create sentinelguard-siddhu   # skip if the name is taken; flyctl suggests one
-flyctl secrets set SECRET_KEY=<paste-the-hex-above>
-flyctl volumes create sentinelguard_data --size 3 --region iad
-flyctl deploy
+flyctl auth login                          # one-time interactive auth
+flyctl apps create sentinelguard-siddhu    # creates the app (CI cannot do this with a deploy token)
+flyctl secrets set SECRET_KEY=<paste-the-hex-above> --app sentinelguard-siddhu
+flyctl volumes create sentinelguard_data --size 3 --region iad --app sentinelguard-siddhu
+flyctl deploy                              # uses fly.toml; builds remotely
 ```
+
+Alternatively, re-run the **"Deploy to Fly.io"** workflow from the GitHub
+Actions tab after the bootstrap — it will detect the app/volume exist and go
+straight to deploying.
 
 That is the whole deployment. `fly.toml` already sets:
 
