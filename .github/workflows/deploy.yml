@@ -16,7 +16,7 @@ env:
 
 jobs:
   deploy:
-    name: Bootstrap and deploy
+    name: Deploy (bootstrap if possible)
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
@@ -24,31 +24,42 @@ jobs:
 
       - uses: superfly/flyctl-actions/setup-flyctl@master
 
-      - name: Diagnostics (visible in public logs)
-        run: |
-          flyctl auth whoami || echo "WARN: token identity check failed"
-          flyctl apps list || echo "WARN: apps list failed"
-          flyctl status --app "$FLY_APP" || echo "INFO: app $FLY_APP does not exist yet"
-        env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-
+      # Deploy-scoped tokens cannot create apps/volumes/secrets; those are
+      # one-time local steps (see DEPLOY.md). Everything here is best-effort
+      # with explicit warnings so `flyctl deploy` always gets its chance.
       - name: Ensure Fly app exists
-        run: flyctl status --app "$FLY_APP" || flyctl apps create "$FLY_APP"
+        run: |
+          if flyctl status --app "$FLY_APP" 2>/dev/null; then
+            echo "App $FLY_APP exists."
+          elif flyctl apps create "$FLY_APP"; then
+            echo "Created app $FLY_APP."
+          else
+            echo "::warning::Cannot create app with this token. Run once locally: flyctl apps create $FLY_APP"
+          fi
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
 
       - name: Ensure persistent volume exists
         run: |
-          if ! flyctl volumes list --app "$FLY_APP" --json | grep -q "$FLY_VOLUME"; then
-            flyctl volumes create "$FLY_VOLUME" --size 3 --region "$FLY_REGION" --app "$FLY_APP" --yes
+          if flyctl volumes list --app "$FLY_APP" 2>/dev/null | grep -q "$FLY_VOLUME"; then
+            echo "Volume $FLY_VOLUME exists."
+          elif flyctl volumes create "$FLY_VOLUME" --size 3 --region "$FLY_REGION" --app "$FLY_APP" --yes 2>/dev/null; then
+            echo "Created volume $FLY_VOLUME."
+          else
+            echo "::warning::Cannot create volume with this token. Run once locally: flyctl volumes create $FLY_VOLUME --size 3 --region $FLY_REGION --app $FLY_APP"
           fi
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
 
-      - name: Ensure SECRET_KEY is set (generated once, never printed)
+      - name: Ensure SECRET_KEY is set (never printed)
         run: |
-          flyctl secrets list --app "$FLY_APP" | grep -q SECRET_KEY \
-            || flyctl secrets set SECRET_KEY="$(openssl rand -hex 32)" --app "$FLY_APP"
+          if flyctl secrets list --app "$FLY_APP" 2>/dev/null | grep -q SECRET_KEY; then
+            echo "SECRET_KEY is set."
+          elif flyctl secrets set SECRET_KEY="$(openssl rand -hex 32)" --app "$FLY_APP" 2>/dev/null; then
+            echo "SECRET_KEY generated and set."
+          else
+            echo "::warning::Token cannot manage secrets. Run once locally: flyctl secrets set SECRET_KEY=<64-hex> --app $FLY_APP"
+          fi
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
 
