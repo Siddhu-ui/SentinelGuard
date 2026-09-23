@@ -24,6 +24,14 @@ jobs:
 
       - uses: superfly/flyctl-actions/setup-flyctl@master
 
+      - name: Diagnostics (visible in public logs)
+        run: |
+          flyctl auth whoami || echo "WARN: token identity check failed"
+          flyctl apps list || echo "WARN: apps list failed"
+          flyctl status --app "$FLY_APP" || echo "INFO: app $FLY_APP does not exist yet"
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
       - name: Ensure Fly app exists
         run: flyctl status --app "$FLY_APP" || flyctl apps create "$FLY_APP"
         env:
